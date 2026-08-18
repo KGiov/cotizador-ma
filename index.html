@@ -236,6 +236,13 @@ td{padding:11px 10px;vertical-align:top;}
 .pv-firma-sq.rejected{border-color:#c0392b;background:#fdf2f1;color:#c0392b;font-weight:600;}
 .pv-firma-sq.rejected .firma-label{color:#c0392b;font-size:14px;}
 .pv-firma-sq.signed .firma-label{color:#2d7a4f;font-size:14px;}
+/* Páginas del ANEXO adjunto: invisibles en pantalla, hojas completas al imprimir */
+#adjunto-print{display:none;}
+@media print{
+  #adjunto-print{display:block!important;}
+  .adjunto-pagina{page-break-before:always;break-before:page;}
+  .adjunto-pagina img{width:100%;display:block;margin:0;}
+}
 /* Modo CAPTURA (fusión con anexo): el documento se aplana para fotografiarse completo */
 body.pdf-captura{overflow:visible!important;}
 body.pdf-captura #preview-overlay{position:static!important;overflow:visible!important;height:auto!important;background:#fff!important;}
@@ -531,6 +538,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
 @media(max-width:768px){/* Botones de los modales SIEMPRE visibles (barra fija al pie del cuadro) */#modal-aut .maut-card,#modal-pc .maut-card{padding-bottom:0!important;display:flex;flex-direction:column;}#modal-aut .maut-card>*:not(.maut-acts),#modal-pc .maut-card>*:not(.maut-acts){flex-shrink:0;}.maut-acts{position:sticky;bottom:0;background:#fff;margin:8px -22px 0;padding:12px 22px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -6px 16px rgba(0,0,0,.10);border-top:1px solid #eef0f4;z-index:5;}}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -1226,7 +1234,7 @@ ambiental:{l:"Ambiental",b:"ba",items:[
 //     Web App en script.google.com
 //  2) Pega aquí la URL que termina en /exec :
 // ══════════════════════════════════════════════════════════════
-const SYNC_URL = "https://script.google.com/macros/s/AKfycbxvjCCZK3G_ItBAJoQuh0fNNZjmfWLyWobVfNcHI57Um-zaEae5HK6gYODYspGXqeThwg/exec"; // URL del Web App del despacho
+const SYNC_URL = "https://script.google.com/macros/s/AKfycbxBESoeaEYoTyvmo08VDSYpCbpV5mReXR8GJfrv-m9sg7J3_1C5TXC0ewJ8VFIq6Vem/exec"; // URL del Web App del despacho
 const SYNC_INTERVALO_MS = 20000; // consulta cambios cada 20 s
 
 const SYNC_KEYS = ["ma_folio_registry","ma_custom_items","MA_clientes_extra","ma_servicios_extra","ma_overrides_base"];
@@ -1827,9 +1835,9 @@ function render(){
       descuentoBadge='<span class="tag-n" style="background:#f0f9f4;color:#2d7a4f;border-color:#a8d5bc;">-20% iguala</span>';
       tOriginalHtml='<div style="font-size:10px;color:#aaa;text-decoration:line-through;margin-top:1px;">'+mxn(it.t)+'</div>';
     }
-    const dsRaw=it.d>0?mxn(it.d):(it.v?"Variable":"—");
-    const tsRaw=tReal>0?mxn(tReal):(it.v?"Variable":"—");
-    const hsRaw=it.h>0?mxn(it.h):(it.v?"Cotizar":"—");
+    const dsRaw=(it.d>0||it._zd)?mxn(it.d):(it.v?"Variable":"—");
+    const tsRaw=(tReal>0||it._zt)?mxn(tReal):(it.v?"Variable":"—");
+    const hsRaw=(it.h>0||it._zh)?mxn(it.h):(it.v?"Cotizar":"—");
     const det=it.detalle?'<div class="cn-d">'+it.detalle+'</div>':"";
     const firmaId="firma_"+i;
     const notaHtml='<span class="tag-n editable-nota" contenteditable="true" data-idx="'+i+'" style="cursor:text;">'+(it.nota||"+ nota")+'</span>';
@@ -1869,7 +1877,10 @@ function render(){
         const raw=el.textContent.replace(/[^0-9]/g,"");
         const val=parseInt(raw)||0;
         // Guardar precio BASE — el render aplica el descuento iguala al mostrar
-        if(!isNaN(idx)&&items[idx])items[idx][tipo]=val;
+        if(!isNaN(idx)&&items[idx]){
+          items[idx][tipo]=val;
+          items[idx]["_z"+tipo]=(raw!==""&&val===0);   // cero escrito a propósito → se muestra $0
+        }
         render();
       });
       el.addEventListener("keydown",e=>{
@@ -2094,9 +2105,9 @@ function buildPreview(){
       descBadgePv='<span class="pv-tag" style="background:#f0f9f4;color:#2d7a4f;border-color:#a8d5bc;">−20% iguala</span>';
       tOriginalHtmlPv='<div style="font-size:10px;color:#aaa;text-decoration:line-through;margin-top:1px;">'+mxn(it.t)+'</div>';
     }
-    const dsRaw=it.d>0?mxn(it.d):(it.v?"Variable":"—");
-    const tsRaw=tRealPv>0?mxn(tRealPv):(it.v?"Variable":"—");
-    const hsRaw=it.h>0?mxn(it.h):(it.v?"Cotizar":"—");
+    const dsRaw=(it.d>0||it._zd)?mxn(it.d):(it.v?"Variable":"—");
+    const tsRaw=(tRealPv>0||it._zt)?mxn(tRealPv):(it.v?"Variable":"—");
+    const hsRaw=(it.h>0||it._zh)?mxn(it.h):(it.v?"Cotizar":"—");
     const det=it.detalle?'<div class="pv-det">'+it.detalle+'</div>':"";
     const nota='<span class="pv-tag editable-nota-pv" contenteditable="'+editMode+'" data-idx="'+i+'" style="cursor:text;'+(editMode?'':'')+'">'+(it.nota||(editMode?"+ nota":""))+'</span>';
     const firmaId="pvf_"+i;
@@ -2152,11 +2163,12 @@ function buildPreview(){
         if(!isNaN(idx)&&items[idx]){
           // Guardar precio BASE — el render aplica el descuento iguala al mostrar
           items[idx][tipo]=val;
+          items[idx]["_z"+tipo]=(raw!==""&&val===0);
         }
         // Formatear mostrando precio con descuento si aplica
         const esIg2=document.getElementById("chk-iguala")&&document.getElementById("chk-iguala").checked;
         const tReal2=esIg2&&tipo==="t"&&val>0?Math.round(val*0.80):val;
-        el.textContent=tReal2>0?mxn(tReal2):"—";
+        el.textContent=(tReal2>0||(raw!==""&&val===0))?mxn(tReal2):"—";
         recalcPvTots();
       });
       el.addEventListener("keydown",e=>{
@@ -2455,32 +2467,39 @@ function _nombreCotizacion(){
   if(!n)return currentFolio+".pdf";
   return n+(asunto?" - "+asunto:"")+".pdf";
 }
-function descargarPDF(){
-  setMode("view");
-  // ── AUTO-GUARDAR en el registry al descargar ──────────────────
-  (function autoGuardar(){
-    const idx=folioRegistry.findIndex(f=>f.folio===currentFolio);
-    if(idx<0)return; // sin folio activo
-    folioRegistry[idx].snapshot={
-      items:JSON.parse(JSON.stringify(items)),
-      c1:g("c1"),c2:g("c2"),c3:g("c3"),c4:g("c4"),c5:g("c5"),c6:g("c6"),c7:g("c7"),
-      c8:document.getElementById("c8")?document.getElementById("c8").value:"",
-      notas:document.getElementById("notas").value.trim(),
-      esIguala:document.getElementById("chk-iguala").checked,
-      impacto:(getImpacto()||{}).value||null,
-      apertura:(getApertura()||{}).value||null,
-      esNuevo:document.getElementById("chk-nuevo").checked,
-      savedAt:new Date().toLocaleString("es-MX")
-    };
-    folioRegistry[idx].tienePDF=true;
-    _limpiarClausulasPC(folioRegistry[idx]);
-    localStorage.setItem("ma_folio_registry",JSON.stringify(folioRegistry));
-    _checarReautorizacion(idx);
-    renderFolioList();
-  })();
-  // ─────────────────────────────────────────────────────────────
 
-  if(adjuntoFile){
+// ── Convierte el PDF adjunto en imágenes (una por página) para imprimirlas
+//    como hojas finales del documento ──
+async function _adjuntoComoImagenes(){
+  if(!adjuntoFile)return null;
+  if(!/\.pdf$/i.test(adjuntoFile.name))return null;   // docx: usa el método de fusión
+  if(typeof pdfjsLib==="undefined")return null;
+  try{
+    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const buf=await adjuntoFile.arrayBuffer();
+    const doc=await pdfjsLib.getDocument({data:buf}).promise;
+    const cont=document.createElement("div");
+    cont.id="adjunto-print";
+    for(let i=1;i<=doc.numPages;i++){
+      const page=await doc.getPage(i);
+      const vp=page.getViewport({scale:2});
+      const canvas=document.createElement("canvas");
+      canvas.width=vp.width;canvas.height=vp.height;
+      await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;
+      const img=document.createElement("img");
+      img.src=canvas.toDataURL("image/jpeg",0.92);
+      const wrap=document.createElement("div");
+      wrap.className="adjunto-pagina";
+      wrap.appendChild(img);
+      cont.appendChild(wrap);
+    }
+    return cont;
+  }catch(e){return null;}
+}
+
+// Plan B (método anterior): fotografiar la cotización y fusionar con pdf-lib
+function _fusionConCapturas(){
+
     // Con adjunto: generamos los bytes del PDF vía html2pdf y fusionamos
     const toastGen=document.createElement("div");
     toastGen.id="__gen_toast__";
@@ -2517,6 +2536,55 @@ function descargarPDF(){
         imprimirComoFallback();
       });
     },600);
+    }
+
+function descargarPDF(){
+  setMode("view");
+  // ── AUTO-GUARDAR en el registry al descargar ──────────────────
+  (function autoGuardar(){
+    const idx=folioRegistry.findIndex(f=>f.folio===currentFolio);
+    if(idx<0)return; // sin folio activo
+    folioRegistry[idx].snapshot={
+      items:JSON.parse(JSON.stringify(items)),
+      c1:g("c1"),c2:g("c2"),c3:g("c3"),c4:g("c4"),c5:g("c5"),c6:g("c6"),c7:g("c7"),
+      c8:document.getElementById("c8")?document.getElementById("c8").value:"",
+      notas:document.getElementById("notas").value.trim(),
+      esIguala:document.getElementById("chk-iguala").checked,
+      impacto:(getImpacto()||{}).value||null,
+      apertura:(getApertura()||{}).value||null,
+      esNuevo:document.getElementById("chk-nuevo").checked,
+      savedAt:new Date().toLocaleString("es-MX")
+    };
+    folioRegistry[idx].tienePDF=true;
+    _limpiarClausulasPC(folioRegistry[idx]);
+    localStorage.setItem("ma_folio_registry",JSON.stringify(folioRegistry));
+    _checarReautorizacion(idx);
+    renderFolioList();
+  })();
+  // ─────────────────────────────────────────────────────────────
+
+  if(adjuntoFile){
+    // ── El anexo se convierte en IMÁGENES y se agrega como hojas finales.
+    //    La cotización se imprime por la MISMA ruta que sin adjunto. ──
+    const toastA=document.createElement("div");
+    toastA.id="__adj_toast__";
+    toastA.style.cssText="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#2563a8;color:#fff;padding:10px 20px;border-radius:20px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);";
+    toastA.textContent="Preparando el anexo…";
+    document.body.appendChild(toastA);
+    _adjuntoComoImagenes().then(cont=>{
+      document.getElementById("__adj_toast__")?.remove();
+      if(!cont){ _fusionConCapturas(); return; }   // plan B: método anterior
+      const prev=document.getElementById("adjunto-print");
+      if(prev)prev.remove();
+      document.getElementById("preview-overlay").appendChild(cont);
+      const limpiar=()=>{const c=document.getElementById("adjunto-print");if(c)c.remove();window.removeEventListener("afterprint",limpiar);};
+      window.addEventListener("afterprint",limpiar);
+      setTimeout(limpiar,60000);
+      imprimirComoFallback();
+    }).catch(()=>{
+      document.getElementById("__adj_toast__")?.remove();
+      _fusionConCapturas();
+    });
     return;
   }
 
@@ -3498,14 +3566,21 @@ function guardarFormServicio(){
       h:parseFloat(document.getElementById("srvf_h").value)||0,
       nota:document.getElementById("srvf_nota").value.trim()
     };
-    setOverridesBase(ovr);
-    // Actualizar en memoria también
     const aKey=document.getElementById("srvf_a").value;
-    if(TAB[aKey]){
-      const it=TAB[aKey].items.find(i=>i.id===baseId);
-      if(it){
-        if(!it._orig)it._orig={n:it.n,s:it.s,t:it.t,d:it.d,h:it.h,nota:it.nota};
-        Object.assign(it,ovr[baseId]);
+    ovr[baseId].aKey=aKey;                       // el área elegida SE GUARDA en el override
+    setOverridesBase(ovr);
+    // Actualizar en memoria: encontrar el concepto en el área donde esté y moverlo si cambió
+    let itemRef=null,areaOrigen=null;
+    Object.keys(TAB).forEach(k=>{
+      const f=TAB[k].items.find(i=>i.id===baseId);
+      if(f){itemRef=f;areaOrigen=k;}
+    });
+    if(itemRef){
+      if(!itemRef._orig)itemRef._orig={n:itemRef.n,s:itemRef.s,t:itemRef.t,d:itemRef.d,h:itemRef.h,nota:itemRef.nota,aKey:areaOrigen};
+      Object.assign(itemRef,ovr[baseId]);
+      if(areaOrigen!==aKey&&TAB[aKey]){
+        TAB[areaOrigen].items=TAB[areaOrigen].items.filter(i=>i.id!==baseId);
+        TAB[aKey].items.push(itemRef);
       }
     }
     baseIdEl.value="";
@@ -3614,18 +3689,27 @@ function resetServicioBase(id){
 
 function aplicarOverridesEnTAB(){
   // Reconstruir TAB items desde la versión original + overrides
-  // Esto se hace guardando los originales al inicio
   const overrides=getOverridesBase();
   Object.keys(TAB).forEach(aKey=>{
     TAB[aKey].items.forEach(it=>{
       const ovr=overrides[it.id];
       if(ovr){
+        if(!it._orig)it._orig={n:it.n,s:it.s,t:it.t,d:it.d,h:it.h,nota:it.nota,aKey:aKey};
         Object.assign(it,ovr);
       } else if(it._orig){
-        // Restaurar original
         Object.assign(it,it._orig);
       }
     });
+  });
+  // Mover de área los conceptos cuyo override lo indique
+  Object.keys(TAB).forEach(aKey=>{
+    const quedan=[];
+    TAB[aKey].items.forEach(it=>{
+      const destino=overrides[it.id]&&overrides[it.id].aKey;
+      if(destino&&destino!==aKey&&TAB[destino]){TAB[destino].items.push(it);}
+      else quedan.push(it);
+    });
+    TAB[aKey].items=quedan;
   });
 }
 
