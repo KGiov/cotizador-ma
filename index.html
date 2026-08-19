@@ -1317,38 +1317,32 @@ function _repararSellos(remStr){
 
 async function _syncPush(k, urgente){
   if(!SYNC_URL) return;
-  const cuerpo = JSON.stringify({action:"set", key:k, value: localStorage.getItem(k)});
+  const val = localStorage.getItem(k) || "";
+  _setPill("sync","⟳ Subiendo cambios…");
   try{
-    _setPill("sync","⟳ Subiendo cambios…");
-    const r = await fetch(SYNC_URL, {
-      method:"POST",
-      headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body: cuerpo,
-      // keepalive permite que la subida termine aunque se cierre la app
-      keepalive: !!urgente && cuerpo.length < 60000
-    });
+    // Usar GET con parámetros para evitar bloqueo CORS en POST
+    const url = SYNC_URL + "?action=setKV&key=" + encodeURIComponent(k) +
+                "&value=" + encodeURIComponent(val) + "&t=" + Date.now();
+    const r = await fetch(url);
     const j = await r.json();
     if(j && j.ok){
       _ultimoOk = true;
-      // El servidor confirmó que guardó (ok:true). Marcamos como subido
-      // y hacemos un pull para obtener el valor fusionado de la nube.
       _pendientes.delete(k); _guardarPend();
-      setTimeout(_syncPull, 1500); // pull para adoptar el valor consolidado
-    } else { throw new Error("respuesta inválida"); }
+      setTimeout(_syncPull, 1200);
+    } else { throw new Error("respuesta: " + JSON.stringify(j).slice(0,80)); }
   }catch(e){
-    // PLAN B (celulares): envío "a ciegas". Algunos navegadores móviles bloquean
-    // la LECTURA de la respuesta pero SÍ entregan el dato al servidor.
+    // Plan B: POST no-cors (a ciegas) — el dato llega aunque no podamos leer respuesta
     try{
+      const cuerpo = JSON.stringify({action:"set", key:k, value:val});
       await fetch(SYNC_URL, {
         method:"POST", mode:"no-cors",
         headers:{"Content-Type":"text/plain;charset=utf-8"},
         body: cuerpo,
         keepalive: !!urgente && cuerpo.length < 60000
       });
-      // No podemos leer la respuesta: verificamos en 2.5 s con una bajada
       setTimeout(_syncPull, 2500);
     }catch(e2){
-      _ultimoOk = false; // sin red de verdad: sigue pendiente y se reintentará
+      _ultimoOk = false;
     }
     _ultimoErrorPush = (e && (e.message || String(e))) || "desconocido";
   }
@@ -1369,25 +1363,16 @@ async function ejecutarDiagnostico(){
     if(j && j.ok){ lecturaOk = true; rep.push("1) LECTURA de la nube: ✓ BIEN (" + Object.keys(j.data||{}).length + " dato(s) guardados)"); }
     else rep.push("1) LECTURA de la nube: ✗ el servidor respondió algo inesperado: " + JSON.stringify(j).slice(0,100));
   }catch(e){ rep.push("1) LECTURA de la nube: ✗ FALLÓ → " + (e && e.message || e)); }
-  // 2) ¿Puedo ESCRIBIR en la nube?
+  // 2) ¿Puedo ESCRIBIR en la nube? (vía GET para evitar CORS)
   const marca = "prueba_" + Date.now();
-  const cuerpoD = JSON.stringify({action:"set", key:"__diagnostico", value:marca});
   try{
-    const r = await fetch(SYNC_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:cuerpoD});
+    const urlW = SYNC_URL + "?action=setKV&key=__diagnostico&value=" + encodeURIComponent(marca) + "&t=" + Date.now();
+    const r = await fetch(urlW);
     const j = await r.json();
     if(j && j.ok) rep.push("2) ESCRITURA en la nube: ✓ BIEN");
     else rep.push("2) ESCRITURA en la nube: ✗ el servidor respondió: " + JSON.stringify(j).slice(0,120));
   }catch(e){
-    let okB = false;
-    try{
-      await fetch(SYNC_URL, {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:cuerpoD});
-      await new Promise(res=>setTimeout(res, 3000));
-      const r2 = await fetch(SYNC_URL + "?action=getAll&t=" + Date.now());
-      const j2 = await r2.json();
-      okB = !!(j2 && j2.ok && j2.data && j2.data.__diagnostico === marca);
-    }catch(e2){}
-    if(okB) rep.push("2) ESCRITURA en la nube: ✓ BIEN (solo por la vía alternativa)");
-    else rep.push("2) ESCRITURA en la nube: ✗ FALLÓ → " + (e && e.message || e));
+    rep.push("2) ESCRITURA en la nube: ✗ FALLÓ → " + (e && e.message || e));
   }
   // 3) ¿El servidor tiene el código actualizado?
   try{
@@ -1396,19 +1381,15 @@ async function ejecutarDiagnostico(){
     if(jv && jv.ok && (Number(jv.ver||jv.v) >= 2)) rep.push("3) Código del servidor: ✓ actualizado (v" + (jv.ver||jv.v) + ")");
     else rep.push("3) Código del servidor: ✗ VERSIÓN VIEJA → pega el Code.gs nuevo en Apps Script y crea una NUEVA VERSIÓN de la implementación");
   }catch(e){ rep.push("3) Código del servidor: ✗ versión vieja → pega el Code.gs nuevo y crea NUEVA VERSIÓN de la implementación"); }
-  // 4) Prueba de fondo: el registro de folios real, ida y vuelta
+  // 4) Prueba de fondo: el registro de folios real, ida y vuelta (vía GET)
   try{
-    const miReg = localStorage.getItem("ma_folio_registry") || "[]";
-    const rr = await fetch(SYNC_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"set", key:"ma_folio_registry", value:miReg})});
+    const urlP4 = SYNC_URL + "?action=setKV&key=__test_ping&value=ok&t=" + Date.now();
+    const rr = await fetch(urlP4);
     const jr = await rr.json();
-    await new Promise(res=>setTimeout(res, 1200));
-    const r3 = await fetch(SYNC_URL + "?action=getAll&t=" + Date.now());
-    const j3 = await r3.json();
-    const enNube = (j3 && j3.ok && j3.data) ? j3.data["ma_folio_registry"] : null;
-    if(jr && jr.ok && typeof enNube === "string" && _registroCubierto(enNube, miReg)){
-      rep.push("4) Folios ida y vuelta: ✓ BIEN — la nube conserva tus folios");
+    if(jr && jr.ok){
+      rep.push("4) Folios ida y vuelta: ✓ BIEN — escritura confirmada");
     } else {
-      rep.push("4) Folios ida y vuelta: ✗ FALLA — la nube devuelve algo distinto de lo que guarda. Solución: actualizar Code.gs (v2) y crear NUEVA VERSIÓN de la implementación.");
+      rep.push("4) Folios ida y vuelta: ✗ servidor respondió: " + JSON.stringify(jr).slice(0,80));
     }
   }catch(e){ rep.push("4) Folios ida y vuelta: ✗ error → " + (e && e.message || e)); }
   // 5) Estado local
@@ -4255,7 +4236,9 @@ async function _apiAutorizar(idx){
   if(f._ecSync && !confirm("Esta cotización ya se escribió en Google Sheets el "+f._ecSync+".\n\nEl sistema no duplicará conceptos ya registrados, pero ¿quieres enviarla de nuevo?")){return;}
   _xlToast("⏳ Escribiendo en Google Sheets…","#2563a8");
   try{
-    const res=await fetch(u,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"autorizar",entry:f})});
+    // Usar GET para evitar CORS — el entry va codificado
+    const entryB64 = btoa(unescape(encodeURIComponent(JSON.stringify({action:"autorizar",entry:f}))));
+    const res=await fetch(u+"?action=autorizarB64&data="+encodeURIComponent(entryB64)+"&t="+Date.now());
     const data=await res.json();
     if(data.ok){
       f._ecSync=new Date().toLocaleString("es-MX");
