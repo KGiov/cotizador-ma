@@ -1378,7 +1378,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v18.9", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v19.0", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -1431,6 +1431,13 @@ async function ejecutarDiagnostico(){
   }catch(e){ rep.push("4) Folios ida y vuelta: ✗ error → " + (e && e.message || e)); }
   // 5) Estado local
   rep.push("5) Cambios de este dispositivo sin subir: " + (_pendientes.size ? Array.from(_pendientes).join(", ") : "ninguno ✓"));
+  // 6) Folios en memoria vs nube directa
+  try{
+    const r6 = await fetch(SYNC_URL + "?action=registry&t=" + Date.now());
+    const j6 = await r6.json();
+    const nNube = (j6 && j6.ok && Array.isArray(j6.registry)) ? j6.registry.length : "?";
+    rep.push("6) Folios en nube (hoja _REGISTRO): " + nNube + " · En este dispositivo: " + folioRegistry.length);
+  }catch(e6){ rep.push("6) Folios en nube: no disponible"); }
   if(_ultimoErrorPush) rep.push("Último error de subida registrado: " + _ultimoErrorPush);
   rep.push("", "Manda captura de este mensaje para revisarlo.");
   _actualizarPill();
@@ -1488,8 +1495,6 @@ async function _syncPull(){
           }
         }
         if(_pendientes.has(k)){
-          // Hay un cambio local sin confirmar: solo lo damos por subido si la
-          // nube ya lo refleja; mientras tanto, NUNCA se pisa lo local.
           if(_confirmaPendiente(k, v)){
             _pendientes.delete(k); _guardarPend();
             if(v !== localStorage.getItem(k)){ _lsSet(k, v); cambiados.push(k); }
@@ -1500,10 +1505,44 @@ async function _syncPull(){
       }
       cambiados.forEach(_aplicarCambioRemoto);
       _ultimoOk = true;
-      if(_pendientes.size) _flushPendientes(false); // reintenta lo que quedó atorado
+      if(_pendientes.size) _flushPendientes(false);
     }
   }catch(e){
     _ultimoOk = false;
+    // ── FALLBACK: si getAll falla, intentar leer solo el registro de folios ──
+    // Esto pasa cuando el servidor está con versión vieja pero aún responde a ?action=registry
+    try{
+      const r2 = await fetch(SYNC_URL + "?action=registry&t=" + Date.now());
+      const j2 = await r2.json();
+      if(j2 && j2.ok && Array.isArray(j2.registry) && j2.registry.length > 0){
+        // Tenemos los folios de la nube — mezclarlos con los locales sin pisar nada local
+        const remoteReg = j2.registry;
+        const localStr  = localStorage.getItem("ma_folio_registry") || "[]";
+        let localReg;
+        try{ localReg = JSON.parse(localStr); }catch(ex){ localReg = []; }
+        // Construir mapa local por folio
+        const mapLocal = {};
+        localReg.forEach(function(f){ if(f && f.folio) mapLocal[f.folio] = f; });
+        let cambio = false;
+        remoteReg.forEach(function(fr){
+          if(!fr || !fr.folio) return;
+          const fl = mapLocal[fr.folio];
+          // Solo adoptar dato remoto si es más nuevo o no existe localmente
+          if(!fl || (Number(fr._m)||0) > (Number(fl._m)||0)){
+            mapLocal[fr.folio] = fr;
+            cambio = true;
+          }
+        });
+        if(cambio){
+          const merged = Object.values(mapLocal).filter(Boolean);
+          _lsSet("ma_folio_registry", JSON.stringify(merged));
+          try{
+            folioRegistry = merged;
+            if(typeof renderFolioList === "function") renderFolioList();
+          }catch(ex){}
+        }
+      }
+    }catch(e2){ /* fallback también falló — seguimos en modo local */ }
   }
   _actualizarPill();
   _pullBusy = false;
@@ -2739,6 +2778,37 @@ function marcarFirma(idx, chk){
 
 // ── REGISTRO DE FOLIOS ────────────────────────────────────────
 let folioRegistry=JSON.parse(localStorage.getItem("ma_folio_registry")||"[]");
+
+// ── RECUPERACIÓN AL ARRANQUE: si el registro local está vacío pero la nube tiene datos ──────
+// Se ejecuta una vez al cargar la página. Si hay datos en la nube que no están localmente,
+// los adopta para que el cotizador no aparezca "en blanco" al abrir desde un dispositivo nuevo.
+(async function _recuperarDeNubeAlArranque(){
+  if(!SYNC_URL) return;
+  if(folioRegistry && folioRegistry.length > 0) return; // ya hay datos locales, no hacer nada
+  try{
+    await new Promise(res=>setTimeout(res, 800)); // esperar un tick para que DOM cargue
+    const r = await fetch(SYNC_URL + "?action=registry&t=" + Date.now());
+    const j = await r.json();
+    if(j && j.ok && Array.isArray(j.registry) && j.registry.length > 0){
+      folioRegistry = j.registry;
+      localStorage.setItem("ma_folio_registry", JSON.stringify(folioRegistry));
+      // Actualizar también el contador de folio al máximo de la nube
+      const year = new Date().getFullYear();
+      const maxN = folioRegistry.reduce(function(mx, f){
+        if(!f || !f.folio) return mx;
+        const m = f.folio.match(/-(\d+)$/);
+        return m ? Math.max(mx, parseInt(m[1],10)) : mx;
+      }, 0);
+      if(maxN > 0){
+        const keyAnio = "ma_folio_" + year;
+        const localN = parseInt(localStorage.getItem(keyAnio)||"0", 10);
+        if(maxN > localN) localStorage.setItem(keyAnio, String(maxN));
+      }
+      if(typeof renderFolioList === "function") renderFolioList();
+      if(typeof _actualizarPill === "function") _actualizarPill();
+    }
+  }catch(e){ /* si falla, el usuario simplemente ve vacío y sincronizará después */ }
+})();
 
 // Sello de tiempo MONOTÓNICO: siempre mayor que el último cambio conocido.
 // Evita que un reloj atrasado (típico en celulares) haga que el servidor
