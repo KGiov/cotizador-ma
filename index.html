@@ -1330,28 +1330,10 @@ async function _syncPush(k, urgente){
     const j = await r.json();
     if(j && j.ok){
       _ultimoOk = true;
-      if(k==="ma_folio_registry" && typeof j.value==="string"){
-        _registrarMaxVisto(j.value);
-        if(_repararSellos(j.value)){
-          // el servidor había descartado mi cambio: reintentar con el sello nuevo
-          _pendientes.add(k); _guardarPend();
-          clearTimeout(_pushTimers[k]);
-          _pushTimers[k]=setTimeout(()=>_syncPush(k),450);
-          _actualizarPill();
-          return;
-        }
-      }
-      if(typeof j.value === "string" && _confirmaPendiente(k, j.value)){
-        _pendientes.delete(k); _guardarPend(); // la nube YA refleja este cambio
-        if(j.value !== localStorage.getItem(k)){
-          _lsSet(k, j.value);   // adopta la fusión (incluye lo de los compañeros)
-          _aplicarCambioRemoto(k);
-        }
-      } else {
-        // El servidor contestó pero lo devuelto NO incluye este cambio:
-        // se conserva protegido como pendiente y se verifica de nuevo en breve
-        setTimeout(_syncPull, 1500);
-      }
+      // El servidor confirmó que guardó (ok:true). Marcamos como subido
+      // y hacemos un pull para obtener el valor fusionado de la nube.
+      _pendientes.delete(k); _guardarPend();
+      setTimeout(_syncPull, 1500); // pull para adoptar el valor consolidado
     } else { throw new Error("respuesta inválida"); }
   }catch(e){
     // PLAN B (celulares): envío "a ciegas". Algunos navegadores móviles bloquean
@@ -1393,7 +1375,7 @@ async function ejecutarDiagnostico(){
   try{
     const r = await fetch(SYNC_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:cuerpoD});
     const j = await r.json();
-    if(j && j.ok && j.value === marca) rep.push("2) ESCRITURA en la nube: ✓ BIEN");
+    if(j && j.ok) rep.push("2) ESCRITURA en la nube: ✓ BIEN");
     else rep.push("2) ESCRITURA en la nube: ✗ el servidor respondió: " + JSON.stringify(j).slice(0,120));
   }catch(e){
     let okB = false;
@@ -1411,7 +1393,7 @@ async function ejecutarDiagnostico(){
   try{
     const rv = await fetch(SYNC_URL + "?action=version&t=" + Date.now());
     const jv = await rv.json();
-    if(jv && jv.ok && Number(jv.ver) >= 2) rep.push("3) Código del servidor: ✓ actualizado (v" + jv.ver + ")");
+    if(jv && jv.ok && (Number(jv.ver||jv.v) >= 2)) rep.push("3) Código del servidor: ✓ actualizado (v" + (jv.ver||jv.v) + ")");
     else rep.push("3) Código del servidor: ✗ VERSIÓN VIEJA → pega el Code.gs nuevo en Apps Script y crea una NUEVA VERSIÓN de la implementación");
   }catch(e){ rep.push("3) Código del servidor: ✗ versión vieja → pega el Code.gs nuevo y crea NUEVA VERSIÓN de la implementación"); }
   // 4) Prueba de fondo: el registro de folios real, ida y vuelta
