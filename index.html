@@ -1319,8 +1319,51 @@ async function _syncPush(k, urgente){
   if(!SYNC_URL) return;
   const val = localStorage.getItem(k) || "";
   _setPill("sync","⟳ Subiendo cambios…");
+
+  // Para ma_folio_registry usar saveRegistry (hoja _REGISTRO) — es más robusto
+  // y evita el límite de longitud de URL en GET
+  if(k === "ma_folio_registry"){
+    try{
+      let entries = [];
+      try{ entries = JSON.parse(val); }catch(ex){}
+      // Partir en lotes de 20 para no superar límite de URL
+      const LOTE = 20;
+      let ok = true;
+      for(let i=0; i < entries.length; i += LOTE){
+        const lote = entries.slice(i, i+LOTE);
+        const url = SYNC_URL + "?action=saveReg&entries=" +
+                    encodeURIComponent(JSON.stringify(lote)) + "&t=" + Date.now();
+        const r = await fetch(url);
+        const j = await r.json();
+        if(!j || !j.ok){ ok = false; break; }
+      }
+      // Si está vacío igual marcar como subido
+      if(ok){
+        _ultimoOk = true;
+        _pendientes.delete(k); _guardarPend();
+        setTimeout(_syncPull, 1200);
+        _actualizarPill();
+        return;
+      }
+    }catch(e){
+      _ultimoErrorPush = (e && e.message) || "error saveReg";
+    }
+    // Plan B para registry: POST no-cors
+    try{
+      await fetch(SYNC_URL, {
+        method:"POST", mode:"no-cors",
+        headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body: JSON.stringify({action:"set", key:k, value:val}),
+        keepalive: !!urgente && val.length < 60000
+      });
+      setTimeout(_syncPull, 2500);
+    }catch(e2){ _ultimoOk = false; }
+    _actualizarPill();
+    return;
+  }
+
+  // Para otras claves (pequeñas) usar setKV vía GET
   try{
-    // Usar GET con parámetros para evitar bloqueo CORS en POST
     const url = SYNC_URL + "?action=setKV&key=" + encodeURIComponent(k) +
                 "&value=" + encodeURIComponent(val) + "&t=" + Date.now();
     const r = await fetch(url);
@@ -1331,19 +1374,15 @@ async function _syncPush(k, urgente){
       setTimeout(_syncPull, 1200);
     } else { throw new Error("respuesta: " + JSON.stringify(j).slice(0,80)); }
   }catch(e){
-    // Plan B: POST no-cors (a ciegas) — el dato llega aunque no podamos leer respuesta
     try{
-      const cuerpo = JSON.stringify({action:"set", key:k, value:val});
       await fetch(SYNC_URL, {
         method:"POST", mode:"no-cors",
         headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body: cuerpo,
-        keepalive: !!urgente && cuerpo.length < 60000
+        body: JSON.stringify({action:"set", key:k, value:val}),
+        keepalive: !!urgente && val.length < 60000
       });
       setTimeout(_syncPull, 2500);
-    }catch(e2){
-      _ultimoOk = false;
-    }
+    }catch(e2){ _ultimoOk = false; }
     _ultimoErrorPush = (e && (e.message || String(e))) || "desconocido";
   }
   _actualizarPill();
