@@ -11,7 +11,7 @@
   --sidebar:#1a1f2e;--border:#e2e5ec;--border2:#cdd2dc;
   --ink:#1a1f2e;--ink2:#4a5066;--ink3:#8890a4;
   --gold:#b07d2e;--gold-lt:#c9933a;--gold-bg:#fdf6ec;--gold-border:#e8d5b0;
-  --red:#c0392b;--red-bg:#fdf2f1;--pc:#1565a8;--pc-bg:#e8f0fb;
+  --red:#c0392b;--red-bg:#fdf2f1;
   --green:#2d7a4f;--green-bg:#f0f9f4;
   --blue:#2563a8;--blue-bg:#eff5fd;
   --purple:#5b3fa0;--purple-bg:#f4f0fb;
@@ -151,7 +151,7 @@ td{padding:11px 10px;vertical-align:top;}
 .bg{background:var(--green-bg);color:var(--green);}
 .bj{background:var(--purple-bg);color:var(--purple);}
 .bo{background:var(--orange-bg);color:var(--orange);}
-.bp{background:var(--pc-bg);color:var(--pc);}
+.bp{background:var(--red-bg);color:var(--red);}
 .ba{background:var(--green-bg);color:#1a6b3a;}
 .cn{font-size:12px;color:var(--ink);line-height:1.4;margin-bottom:2px;font-weight:500;}
 .cs{font-size:10px;color:var(--ink3);}
@@ -211,7 +211,6 @@ td{padding:11px 10px;vertical-align:top;}
 .folios-panel h3{font-family:"Cormorant Garamond",serif;font-size:15px;font-weight:600;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
 .folio-row{display:grid;grid-template-columns:130px 1fr 1fr auto auto;gap:8px;align-items:center;padding:8px 10px;border-radius:var(--rs);border:1px solid var(--border);margin-bottom:6px;font-size:11px;background:var(--surface2);}
 .folio-row.status-autorizada{border-left:3px solid var(--green);background:var(--green-bg);}
-.folio-row.status-autorizada-parcial{border-left:3px solid #d97706;background:#fff7ed;}
 .folio-row.status-rechazada{border-left:3px solid var(--red);background:var(--red-bg);}
 .folio-row.status-recotizar{border-left:3px solid var(--gold);background:var(--gold-bg);}
 .folio-row.status-pendiente{border-left:3px solid var(--border2);}
@@ -550,7 +549,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
     <div class="hbadge">CDMX 2026</div>
     <div class="hbadge" id="ma-version" style="opacity:.75;" title="Versión del cotizador">v18.9</div>
     <div id="sync-pill" data-st="local" title="Toca para hacer un diagnóstico de sincronización" onclick="ejecutarDiagnostico()" style="cursor:pointer;">◌ Solo local</div>
-    <div class="hdate">Folio <strong id="folio">COT-2026-001</strong></div>
+    <div class="hdate">Folio <strong id="folio">COT-2026-001</strong> &nbsp;|&nbsp; <span id="hoy"></span></div>
   </div>
 </header>
 
@@ -674,16 +673,8 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
       <input id="custom-name" placeholder="Ej. Asesoría especial, Estudio técnico…" autocomplete="off">
     </div>
     <div class="sf">
-      <label>Área</label>
-      <select id="custom-sub" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rs);padding:7px 10px;font-family:'Inter',sans-serif;font-size:12px;color:#fff;outline:none;">
-        <option value="Giros Mercantiles">Giros Mercantiles</option>
-        <option value="Jurídico">Jurídico</option>
-        <option value="Obras">Obras</option>
-        <option value="Protección Civil">Protección Civil</option>
-        <option value="Ambiental">Ambiental</option>
-        <option value="Civil">Civil</option>
-        <option value="Laboral">Laboral</option>
-      </select>
+      <label>Área / Subcategoría (opcional)</label>
+      <input id="custom-sub" placeholder="Ej. Giros Mercantiles / Consulta">
     </div>
     <div class="sf" style="margin-bottom:4px;"><label>Selecciona los tipos de monto que aplican</label></div>
     <div class="ctype-row">
@@ -1235,7 +1226,7 @@ ambiental:{l:"Ambiental",b:"ba",items:[
 //     Web App en script.google.com
 //  2) Pega aquí la URL que termina en /exec :
 // ══════════════════════════════════════════════════════════════
-const SYNC_URL = "https://script.google.com/macros/s/AKfycbwKQSU59-MzsHhmODU-xtqIvI7l_u4BSWqF3pPbB-Mxupm81fCgdN7tmvQvemqAY3Z85w/exec"; // URL del Web App del despacho
+const SYNC_URL = "https://script.google.com/macros/s/AKfycbxvjCCZK3G_ItBAJoQuh0fNNZjmfWLyWobVfNcHI57Um-zaEae5HK6gYODYspGXqeThwg/exec"; // URL del Web App del despacho
 const SYNC_INTERVALO_MS = 20000; // consulta cambios cada 20 s
 
 const SYNC_KEYS = ["ma_folio_registry","ma_custom_items","MA_clientes_extra","ma_servicios_extra","ma_overrides_base"];
@@ -1317,72 +1308,57 @@ function _repararSellos(remStr){
 
 async function _syncPush(k, urgente){
   if(!SYNC_URL) return;
-  const val = localStorage.getItem(k) || "";
-  _setPill("sync","⟳ Subiendo cambios…");
-
-  // Para ma_folio_registry usar saveRegistry (hoja _REGISTRO) — es más robusto
-  // y evita el límite de longitud de URL en GET
-  if(k === "ma_folio_registry"){
-    try{
-      let entries = [];
-      try{ entries = JSON.parse(val); }catch(ex){}
-      // Partir en lotes de 20 para no superar límite de URL
-      const LOTE = 20;
-      let ok = true;
-      for(let i=0; i < entries.length; i += LOTE){
-        const lote = entries.slice(i, i+LOTE);
-        const url = SYNC_URL + "?action=saveReg&entries=" +
-                    encodeURIComponent(JSON.stringify(lote)) + "&t=" + Date.now();
-        const r = await fetch(url);
-        const j = await r.json();
-        if(!j || !j.ok){ ok = false; break; }
-      }
-      // Si está vacío igual marcar como subido
-      if(ok){
-        _ultimoOk = true;
-        _pendientes.delete(k); _guardarPend();
-        setTimeout(_syncPull, 1200);
-        _actualizarPill();
-        return;
-      }
-    }catch(e){
-      _ultimoErrorPush = (e && e.message) || "error saveReg";
-    }
-    // Plan B para registry: POST no-cors
-    try{
-      await fetch(SYNC_URL, {
-        method:"POST", mode:"no-cors",
-        headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body: JSON.stringify({action:"set", key:k, value:val}),
-        keepalive: !!urgente && val.length < 60000
-      });
-      setTimeout(_syncPull, 2500);
-    }catch(e2){ _ultimoOk = false; }
-    _actualizarPill();
-    return;
-  }
-
-  // Para otras claves (pequeñas) usar setKV vía GET
+  const cuerpo = JSON.stringify({action:"set", key:k, value: localStorage.getItem(k)});
   try{
-    const url = SYNC_URL + "?action=setKV&key=" + encodeURIComponent(k) +
-                "&value=" + encodeURIComponent(val) + "&t=" + Date.now();
-    const r = await fetch(url);
+    _setPill("sync","⟳ Subiendo cambios…");
+    const r = await fetch(SYNC_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: cuerpo,
+      // keepalive permite que la subida termine aunque se cierre la app
+      keepalive: !!urgente && cuerpo.length < 60000
+    });
     const j = await r.json();
     if(j && j.ok){
       _ultimoOk = true;
-      _pendientes.delete(k); _guardarPend();
-      setTimeout(_syncPull, 1200);
-    } else { throw new Error("respuesta: " + JSON.stringify(j).slice(0,80)); }
+      if(k==="ma_folio_registry" && typeof j.value==="string"){
+        _registrarMaxVisto(j.value);
+        if(_repararSellos(j.value)){
+          // el servidor había descartado mi cambio: reintentar con el sello nuevo
+          _pendientes.add(k); _guardarPend();
+          clearTimeout(_pushTimers[k]);
+          _pushTimers[k]=setTimeout(()=>_syncPush(k),450);
+          _actualizarPill();
+          return;
+        }
+      }
+      if(typeof j.value === "string" && _confirmaPendiente(k, j.value)){
+        _pendientes.delete(k); _guardarPend(); // la nube YA refleja este cambio
+        if(j.value !== localStorage.getItem(k)){
+          _lsSet(k, j.value);   // adopta la fusión (incluye lo de los compañeros)
+          _aplicarCambioRemoto(k);
+        }
+      } else {
+        // El servidor contestó pero lo devuelto NO incluye este cambio:
+        // se conserva protegido como pendiente y se verifica de nuevo en breve
+        setTimeout(_syncPull, 1500);
+      }
+    } else { throw new Error("respuesta inválida"); }
   }catch(e){
+    // PLAN B (celulares): envío "a ciegas". Algunos navegadores móviles bloquean
+    // la LECTURA de la respuesta pero SÍ entregan el dato al servidor.
     try{
       await fetch(SYNC_URL, {
         method:"POST", mode:"no-cors",
         headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body: JSON.stringify({action:"set", key:k, value:val}),
-        keepalive: !!urgente && val.length < 60000
+        body: cuerpo,
+        keepalive: !!urgente && cuerpo.length < 60000
       });
+      // No podemos leer la respuesta: verificamos en 2.5 s con una bajada
       setTimeout(_syncPull, 2500);
-    }catch(e2){ _ultimoOk = false; }
+    }catch(e2){
+      _ultimoOk = false; // sin red de verdad: sigue pendiente y se reintentará
+    }
     _ultimoErrorPush = (e && (e.message || String(e))) || "desconocido";
   }
   _actualizarPill();
@@ -1393,7 +1369,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v19.0", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v18.9", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -1402,44 +1378,50 @@ async function ejecutarDiagnostico(){
     if(j && j.ok){ lecturaOk = true; rep.push("1) LECTURA de la nube: ✓ BIEN (" + Object.keys(j.data||{}).length + " dato(s) guardados)"); }
     else rep.push("1) LECTURA de la nube: ✗ el servidor respondió algo inesperado: " + JSON.stringify(j).slice(0,100));
   }catch(e){ rep.push("1) LECTURA de la nube: ✗ FALLÓ → " + (e && e.message || e)); }
-  // 2) ¿Puedo ESCRIBIR en la nube? (vía GET para evitar CORS)
+  // 2) ¿Puedo ESCRIBIR en la nube?
   const marca = "prueba_" + Date.now();
+  const cuerpoD = JSON.stringify({action:"set", key:"__diagnostico", value:marca});
   try{
-    const urlW = SYNC_URL + "?action=setKV&key=__diagnostico&value=" + encodeURIComponent(marca) + "&t=" + Date.now();
-    const r = await fetch(urlW);
+    const r = await fetch(SYNC_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:cuerpoD});
     const j = await r.json();
-    if(j && j.ok) rep.push("2) ESCRITURA en la nube: ✓ BIEN");
+    if(j && j.ok && j.value === marca) rep.push("2) ESCRITURA en la nube: ✓ BIEN");
     else rep.push("2) ESCRITURA en la nube: ✗ el servidor respondió: " + JSON.stringify(j).slice(0,120));
   }catch(e){
-    rep.push("2) ESCRITURA en la nube: ✗ FALLÓ → " + (e && e.message || e));
+    let okB = false;
+    try{
+      await fetch(SYNC_URL, {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:cuerpoD});
+      await new Promise(res=>setTimeout(res, 3000));
+      const r2 = await fetch(SYNC_URL + "?action=getAll&t=" + Date.now());
+      const j2 = await r2.json();
+      okB = !!(j2 && j2.ok && j2.data && j2.data.__diagnostico === marca);
+    }catch(e2){}
+    if(okB) rep.push("2) ESCRITURA en la nube: ✓ BIEN (solo por la vía alternativa)");
+    else rep.push("2) ESCRITURA en la nube: ✗ FALLÓ → " + (e && e.message || e));
   }
   // 3) ¿El servidor tiene el código actualizado?
   try{
     const rv = await fetch(SYNC_URL + "?action=version&t=" + Date.now());
     const jv = await rv.json();
-    if(jv && jv.ok && (Number(jv.ver||jv.v) >= 2)) rep.push("3) Código del servidor: ✓ actualizado (v" + (jv.ver||jv.v) + ")");
+    if(jv && jv.ok && Number(jv.ver) >= 2) rep.push("3) Código del servidor: ✓ actualizado (v" + jv.ver + ")");
     else rep.push("3) Código del servidor: ✗ VERSIÓN VIEJA → pega el Code.gs nuevo en Apps Script y crea una NUEVA VERSIÓN de la implementación");
   }catch(e){ rep.push("3) Código del servidor: ✗ versión vieja → pega el Code.gs nuevo y crea NUEVA VERSIÓN de la implementación"); }
-  // 4) Prueba de fondo: el registro de folios real, ida y vuelta (vía GET)
+  // 4) Prueba de fondo: el registro de folios real, ida y vuelta
   try{
-    const urlP4 = SYNC_URL + "?action=setKV&key=__test_ping&value=ok&t=" + Date.now();
-    const rr = await fetch(urlP4);
+    const miReg = localStorage.getItem("ma_folio_registry") || "[]";
+    const rr = await fetch(SYNC_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"set", key:"ma_folio_registry", value:miReg})});
     const jr = await rr.json();
-    if(jr && jr.ok){
-      rep.push("4) Folios ida y vuelta: ✓ BIEN — escritura confirmada");
+    await new Promise(res=>setTimeout(res, 1200));
+    const r3 = await fetch(SYNC_URL + "?action=getAll&t=" + Date.now());
+    const j3 = await r3.json();
+    const enNube = (j3 && j3.ok && j3.data) ? j3.data["ma_folio_registry"] : null;
+    if(jr && jr.ok && typeof enNube === "string" && _registroCubierto(enNube, miReg)){
+      rep.push("4) Folios ida y vuelta: ✓ BIEN — la nube conserva tus folios");
     } else {
-      rep.push("4) Folios ida y vuelta: ✗ servidor respondió: " + JSON.stringify(jr).slice(0,80));
+      rep.push("4) Folios ida y vuelta: ✗ FALLA — la nube devuelve algo distinto de lo que guarda. Solución: actualizar Code.gs (v2) y crear NUEVA VERSIÓN de la implementación.");
     }
   }catch(e){ rep.push("4) Folios ida y vuelta: ✗ error → " + (e && e.message || e)); }
   // 5) Estado local
   rep.push("5) Cambios de este dispositivo sin subir: " + (_pendientes.size ? Array.from(_pendientes).join(", ") : "ninguno ✓"));
-  // 6) Folios en memoria vs nube directa
-  try{
-    const r6 = await fetch(SYNC_URL + "?action=registry&t=" + Date.now());
-    const j6 = await r6.json();
-    const nNube = (j6 && j6.ok && Array.isArray(j6.registry)) ? j6.registry.length : "?";
-    rep.push("6) Folios en nube (hoja _REGISTRO): " + nNube + " · En este dispositivo: " + folioRegistry.length);
-  }catch(e6){ rep.push("6) Folios en nube: no disponible"); }
   if(_ultimoErrorPush) rep.push("Último error de subida registrado: " + _ultimoErrorPush);
   rep.push("", "Manda captura de este mensaje para revisarlo.");
   _actualizarPill();
@@ -1497,6 +1479,8 @@ async function _syncPull(){
           }
         }
         if(_pendientes.has(k)){
+          // Hay un cambio local sin confirmar: solo lo damos por subido si la
+          // nube ya lo refleja; mientras tanto, NUNCA se pisa lo local.
           if(_confirmaPendiente(k, v)){
             _pendientes.delete(k); _guardarPend();
             if(v !== localStorage.getItem(k)){ _lsSet(k, v); cambiados.push(k); }
@@ -1507,44 +1491,10 @@ async function _syncPull(){
       }
       cambiados.forEach(_aplicarCambioRemoto);
       _ultimoOk = true;
-      if(_pendientes.size) _flushPendientes(false);
+      if(_pendientes.size) _flushPendientes(false); // reintenta lo que quedó atorado
     }
   }catch(e){
     _ultimoOk = false;
-    // ── FALLBACK: si getAll falla, intentar leer solo el registro de folios ──
-    // Esto pasa cuando el servidor está con versión vieja pero aún responde a ?action=registry
-    try{
-      const r2 = await fetch(SYNC_URL + "?action=registry&t=" + Date.now());
-      const j2 = await r2.json();
-      if(j2 && j2.ok && Array.isArray(j2.registry) && j2.registry.length > 0){
-        // Tenemos los folios de la nube — mezclarlos con los locales sin pisar nada local
-        const remoteReg = j2.registry;
-        const localStr  = localStorage.getItem("ma_folio_registry") || "[]";
-        let localReg;
-        try{ localReg = JSON.parse(localStr); }catch(ex){ localReg = []; }
-        // Construir mapa local por folio
-        const mapLocal = {};
-        localReg.forEach(function(f){ if(f && f.folio) mapLocal[f.folio] = f; });
-        let cambio = false;
-        remoteReg.forEach(function(fr){
-          if(!fr || !fr.folio) return;
-          const fl = mapLocal[fr.folio];
-          // Solo adoptar dato remoto si es más nuevo o no existe localmente
-          if(!fl || (Number(fr._m)||0) > (Number(fl._m)||0)){
-            mapLocal[fr.folio] = fr;
-            cambio = true;
-          }
-        });
-        if(cambio){
-          const merged = Object.values(mapLocal).filter(Boolean);
-          _lsSet("ma_folio_registry", JSON.stringify(merged));
-          try{
-            folioRegistry = merged;
-            if(typeof renderFolioList === "function") renderFolioList();
-          }catch(ex){}
-        }
-      }
-    }catch(e2){ /* fallback también falló — seguimos en modo local */ }
   }
   _actualizarPill();
   _pullBusy = false;
@@ -1751,7 +1701,7 @@ function initTiSearch(){
     if(!matches.length){drop.classList.remove("open");return;}
     matches.forEach((it)=>{
       const tot=it.d+it.t+it.h;
-      const ps=tot>0?"Ref: "+mxn(tot):"";
+      const ps=it.v?"Por cotizar":(tot>0?"Ref: "+mxn(tot):"");
       const el=document.createElement("div");
       el.className="ti-ac-item";
       el.innerHTML='<div class="ti-ac-item-n">'+it.n+'</div><div class="ti-ac-item-s">'+it.al+' · '+it.s+'</div>'+(ps?'<div class="ti-ac-item-p">'+ps+'</div>':"");
@@ -1797,7 +1747,7 @@ function selA(a){
     const el=document.createElement("div");
     el.className="ti";el.dataset.id=it.id;
     const tot=it.d+it.t+it.h;
-    const ps=tot>0?"Ref: "+mxn(tot):(it.nota||"");
+    const ps=it.v?"Por cotizar":(tot>0?"Ref: "+mxn(tot):(it.nota||""));
     el.innerHTML='<div class="ti-n">'+it.n+'</div><div class="ti-p">'+ps+'</div>';
     el.onclick=()=>selT(it.id);
     list.appendChild(el);
@@ -2662,21 +2612,18 @@ function addCustomItem(){
   const dVal=ctypeActive.has("d")?parseFloat(document.getElementById("custom-amount-d")?.value||0)||0:0;
   const hVal=ctypeActive.has("h")?parseFloat(document.getElementById("custom-amount-h")?.value||0)||0:0;
 
-  const tabArea=getCustomArea();
-  const selArea=sub||tabArea.al;
-  const areaMap={'Giros Mercantiles':{al:'Giros Mercantiles',ab:'bg'},'Jurídico':{al:'Jurídico',ab:'bj'},'Obras':{al:'Obras',ab:'bo'},'Protección Civil':{al:'Protección Civil',ab:'bp'},'Ambiental':{al:'Ambiental',ab:'ba'},'Civil':{al:'Civil',ab:'bj'},'Laboral':{al:'Laboral',ab:'bj'}};
-  const areaObj=areaMap[selArea]||{al:selArea||tabArea.al,ab:tabArea.ab};
+  const area=getCustomArea();
   const it={
     id:"c_"+Date.now(),
-    s: selArea,
+    s: sub||area.al,
     n: name,
     d: dVal,
     t: tVal,
     h: hVal,
     v: (tVal===0&&dVal===0&&hVal===0),
     nota: nota||"",
-    al: areaObj.al,
-    ab: areaObj.ab
+    al: area.al,
+    ab: area.ab
   };
   items.push(it);
   render();
@@ -2723,7 +2670,7 @@ function saveCustomToBase(){
 
 function clearCustomForm(){
   document.getElementById("custom-name").value="";
-  document.getElementById("custom-sub").selectedIndex=0;
+  document.getElementById("custom-sub").value="";
   document.getElementById("custom-nota").value="";
   ctypeActive.clear();
   document.querySelectorAll(".ctype-btn").forEach(b=>b.classList.remove("on"));
@@ -2780,37 +2727,6 @@ function marcarFirma(idx, chk){
 
 // ── REGISTRO DE FOLIOS ────────────────────────────────────────
 let folioRegistry=JSON.parse(localStorage.getItem("ma_folio_registry")||"[]");
-
-// ── RECUPERACIÓN AL ARRANQUE: si el registro local está vacío pero la nube tiene datos ──────
-// Se ejecuta una vez al cargar la página. Si hay datos en la nube que no están localmente,
-// los adopta para que el cotizador no aparezca "en blanco" al abrir desde un dispositivo nuevo.
-(async function _recuperarDeNubeAlArranque(){
-  if(!SYNC_URL) return;
-  if(folioRegistry && folioRegistry.length > 0) return; // ya hay datos locales, no hacer nada
-  try{
-    await new Promise(res=>setTimeout(res, 800)); // esperar un tick para que DOM cargue
-    const r = await fetch(SYNC_URL + "?action=registry&t=" + Date.now());
-    const j = await r.json();
-    if(j && j.ok && Array.isArray(j.registry) && j.registry.length > 0){
-      folioRegistry = j.registry;
-      localStorage.setItem("ma_folio_registry", JSON.stringify(folioRegistry));
-      // Actualizar también el contador de folio al máximo de la nube
-      const year = new Date().getFullYear();
-      const maxN = folioRegistry.reduce(function(mx, f){
-        if(!f || !f.folio) return mx;
-        const m = f.folio.match(/-(\d+)$/);
-        return m ? Math.max(mx, parseInt(m[1],10)) : mx;
-      }, 0);
-      if(maxN > 0){
-        const keyAnio = "ma_folio_" + year;
-        const localN = parseInt(localStorage.getItem(keyAnio)||"0", 10);
-        if(maxN > localN) localStorage.setItem(keyAnio, String(maxN));
-      }
-      if(typeof renderFolioList === "function") renderFolioList();
-      if(typeof _actualizarPill === "function") _actualizarPill();
-    }
-  }catch(e){ /* si falla, el usuario simplemente ve vacío y sincronizará después */ }
-})();
 
 // Sello de tiempo MONOTÓNICO: siempre mayor que el último cambio conocido.
 // Evita que un reloj atrasado (típico en celulares) haga que el servidor
@@ -2904,18 +2820,16 @@ function renderFolioList(){
     if(f._deleted)return;
     if(term&&!_folioCoincide(f,term))return;
     _mostrados++;
-    const isAut=f.status==="autorizada"||f.status==="autorizada-parcial";
+    const isAut=f.status==="autorizada";
     const div=document.createElement("div");
     div.className="folio-row status-"+f.status;
     const compBadge=f.isComplementaria?'<span class="comp-badge">COMP</span>':"";
     const areasStr=f.areas&&f.areas.length?'<span style="font-size:9px;color:var(--ink3);">'+f.areas.join(", ")+'</span>':"";
     const statusOptions=["pendiente","autorizada","rechazada","recotizar"];
     const selHtml=isAut?
-      (f.status==="autorizada-parcial"
-        ?'<span class="folio-badge" style="background:#fff7ed;color:#d97706;">Autorizada parcialmente</span>'
-        :'<span class="folio-badge fb-autorizada">Autorizada</span>')
-      :'<select class="folio-sel" onchange="cambiarStatus('+idx+', this.value)">'+
-        statusOptions.map(s=>'<option value="'+s+'"'+(f.status===s?' selected':'')+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>').join("")+
+      '<span class="folio-badge fb-autorizada">Autorizada</span>':
+      '<select class="folio-sel" onchange="cambiarStatus('+idx+', this.value)">'+
+        statusOptions.map(s=>'<option value="'+s+'"'+(f.status===s?" selected":"")+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>').join("")+
       '</select>';
     const pdfBadge=f.tienePDF?'<span style="font-size:9px;background:#eff5fd;color:#2563a8;border:1px solid #c8dcf5;padding:1px 7px;border-radius:20px;font-weight:600;margin-left:5px;">PDF</span>':"";
     const pcBadge=(f._aportePC&&!f._aportePC.integrado)?'<span title="Protección Civil ya cargó sus conceptos" style="margin-left:5px;vertical-align:middle;display:inline-block;">'+_pcIcon(14)+'</span>':"";
@@ -3007,7 +2921,7 @@ function marcarFacturado(idx){
 }
 
 function exportarAutorizadasAExcel(){
-  const aut=folioRegistry.filter(f=>!f._deleted&&(f.status==="autorizada"||f.status==="autorizada-parcial"));
+  const aut=folioRegistry.filter(f=>!f._deleted&&f.status==="autorizada");
   if(!aut.length){alert("No hay cotizaciones con estatus AUTORIZADA para exportar.");return;}
   const payload={
     exportado:new Date().toLocaleString("es-MX"),
@@ -4061,7 +3975,7 @@ function _crearHojaCliente(nombre){
 function actualizarEC(folioIdx){
   const f=folioRegistry[folioIdx];
   if(!f){return;}
-  if(f.status!=="autorizada"&&f.status!=="autorizada-parcial"){_xlToast("⚠️ Solo cotizaciones autorizadas","#d97706");return;}
+  if(f.status!=="autorizada"){_xlToast("⚠️ Solo cotizaciones autorizadas","#d97706");return;}
   if(!_ecWB){_xlToast("⚠️ Carga primero el Excel de estados de cuenta","#c0392b");return;}
   if(!f.snapshot){_xlToast("⚠️ Este folio no tiene snapshot de conceptos. Abre la vista previa y guárdala primero.","#c0392b");return;}
   const clienteRaw=(f.cliente||"").trim();
@@ -4275,9 +4189,7 @@ async function _apiAutorizar(idx){
   if(f._ecSync && !confirm("Esta cotización ya se escribió en Google Sheets el "+f._ecSync+".\n\nEl sistema no duplicará conceptos ya registrados, pero ¿quieres enviarla de nuevo?")){return;}
   _xlToast("⏳ Escribiendo en Google Sheets…","#2563a8");
   try{
-    // Usar GET para evitar CORS — el entry va codificado
-    const entryB64 = btoa(unescape(encodeURIComponent(JSON.stringify({action:"autorizar",entry:f}))));
-    const res=await fetch(u+"?action=autorizarB64&data="+encodeURIComponent(entryB64)+"&t="+Date.now());
+    const res=await fetch(u,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"autorizar",entry:f})});
     const data=await res.json();
     if(data.ok){
       f._ecSync=new Date().toLocaleString("es-MX");
@@ -4466,10 +4378,7 @@ function confirmarAutorizacion(idx){
   f.asuntoOrden=asuntoVal;
   f._modoTrans=modo;
   f._anticipoMonto=antMonto;
-  // Si algún concepto quedó sin autorizar → parcial
-  const totalItems=(f.snapshot&&f.snapshot.items||[]).length;
-  const totalAut=Object.values(autorizados).filter(Boolean).length;
-  f.status=totalAut<totalItems?"autorizada-parcial":"autorizada";
+  f.status="autorizada";
   f._fpAutorizada=_fpSnapshot(f.snapshot);
   f._m=_mNuevo();
   localStorage.setItem("ma_folio_registry",JSON.stringify(folioRegistry));
@@ -4493,9 +4402,8 @@ function _ordenServicioHTML(f){
   const ubiHtml=String(o.ubicacion||"").trim()
     ?'<a href="'+mapsUrl+'" target="_blank" style="color:#2563a8;text-decoration:underline;">'+_escHtml(o.ubicacion)+' 📍</a>'
     :"Por definir";
-  // Solo mostrar conceptos autorizados
-  const filas=s.items.filter(it=>it._aut!==false).map(it=>{
-    const aut=true;
+  const filas=s.items.map(it=>{
+    const aut=it._aut!==false;
     return '<tr>'+
       '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#b07d2e;white-space:nowrap;">'+_escHtml(it.al||"")+'</td>'+
       '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:11px;color:#1a1f2e;">'+_escHtml(it.n)+(it.s?'<br><span style="font-size:9px;color:#8890a4;">'+_escHtml(it.s)+'</span>':"")+'</td>'+
