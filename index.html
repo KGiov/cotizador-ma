@@ -11,7 +11,7 @@
   --sidebar:#1a1f2e;--border:#e2e5ec;--border2:#cdd2dc;
   --ink:#1a1f2e;--ink2:#4a5066;--ink3:#8890a4;
   --gold:#b07d2e;--gold-lt:#c9933a;--gold-bg:#fdf6ec;--gold-border:#e8d5b0;
-  --red:#c0392b;--red-bg:#fdf2f1;
+  --red:#c0392b;--red-bg:#fdf2f1;--pc:#1565a8;--pc-bg:#e8f0fb;
   --green:#2d7a4f;--green-bg:#f0f9f4;
   --blue:#2563a8;--blue-bg:#eff5fd;
   --purple:#5b3fa0;--purple-bg:#f4f0fb;
@@ -151,7 +151,7 @@ td{padding:11px 10px;vertical-align:top;}
 .bg{background:var(--green-bg);color:var(--green);}
 .bj{background:var(--purple-bg);color:var(--purple);}
 .bo{background:var(--orange-bg);color:var(--orange);}
-.bp{background:var(--red-bg);color:var(--red);}
+.bp{background:var(--pc-bg);color:var(--pc);}
 .ba{background:var(--green-bg);color:#1a6b3a;}
 .cn{font-size:12px;color:var(--ink);line-height:1.4;margin-bottom:2px;font-weight:500;}
 .cs{font-size:10px;color:var(--ink3);}
@@ -211,6 +211,7 @@ td{padding:11px 10px;vertical-align:top;}
 .folios-panel h3{font-family:"Cormorant Garamond",serif;font-size:15px;font-weight:600;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
 .folio-row{display:grid;grid-template-columns:130px 1fr 1fr auto auto;gap:8px;align-items:center;padding:8px 10px;border-radius:var(--rs);border:1px solid var(--border);margin-bottom:6px;font-size:11px;background:var(--surface2);}
 .folio-row.status-autorizada{border-left:3px solid var(--green);background:var(--green-bg);}
+.folio-row.status-autorizada-parcial{border-left:3px solid #d97706;background:#fff7ed;}
 .folio-row.status-rechazada{border-left:3px solid var(--red);background:var(--red-bg);}
 .folio-row.status-recotizar{border-left:3px solid var(--gold);background:var(--gold-bg);}
 .folio-row.status-pendiente{border-left:3px solid var(--border2);}
@@ -236,13 +237,6 @@ td{padding:11px 10px;vertical-align:top;}
 .pv-firma-sq.rejected{border-color:#c0392b;background:#fdf2f1;color:#c0392b;font-weight:600;}
 .pv-firma-sq.rejected .firma-label{color:#c0392b;font-size:14px;}
 .pv-firma-sq.signed .firma-label{color:#2d7a4f;font-size:14px;}
-/* Páginas del ANEXO adjunto: invisibles en pantalla, hojas completas al imprimir */
-#adjunto-print{display:none;}
-@media print{
-  #adjunto-print{display:block!important;}
-  .adjunto-pagina{page-break-before:always;break-before:page;}
-  .adjunto-pagina img{width:100%;display:block;margin:0;}
-}
 /* Modo CAPTURA (fusión con anexo): el documento se aplana para fotografiarse completo */
 body.pdf-captura{overflow:visible!important;}
 body.pdf-captura #preview-overlay{position:static!important;overflow:visible!important;height:auto!important;background:#fff!important;}
@@ -538,7 +532,6 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
 @media(max-width:768px){/* Botones de los modales SIEMPRE visibles (barra fija al pie del cuadro) */#modal-aut .maut-card,#modal-pc .maut-card{padding-bottom:0!important;display:flex;flex-direction:column;}#modal-aut .maut-card>*:not(.maut-acts),#modal-pc .maut-card>*:not(.maut-acts){flex-shrink:0;}.maut-acts{position:sticky;bottom:0;background:#fff;margin:8px -22px 0;padding:12px 22px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -6px 16px rgba(0,0,0,.10);border-top:1px solid #eef0f4;z-index:5;}}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -557,7 +550,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
     <div class="hbadge">CDMX 2026</div>
     <div class="hbadge" id="ma-version" style="opacity:.75;" title="Versión del cotizador">v18.9</div>
     <div id="sync-pill" data-st="local" title="Toca para hacer un diagnóstico de sincronización" onclick="ejecutarDiagnostico()" style="cursor:pointer;">◌ Solo local</div>
-    <div class="hdate">Folio <strong id="folio">COT-2026-001</strong> &nbsp;|&nbsp; <span id="hoy"></span></div>
+    <div class="hdate">Folio <strong id="folio">COT-2026-001</strong></div>
   </div>
 </header>
 
@@ -681,8 +674,16 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
       <input id="custom-name" placeholder="Ej. Asesoría especial, Estudio técnico…" autocomplete="off">
     </div>
     <div class="sf">
-      <label>Área / Subcategoría (opcional)</label>
-      <input id="custom-sub" placeholder="Ej. Giros Mercantiles / Consulta">
+      <label>Área</label>
+      <select id="custom-sub" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--rs);padding:7px 10px;font-family:'Inter',sans-serif;font-size:12px;color:#fff;outline:none;">
+        <option value="Giros Mercantiles">Giros Mercantiles</option>
+        <option value="Jurídico">Jurídico</option>
+        <option value="Obras">Obras</option>
+        <option value="Protección Civil">Protección Civil</option>
+        <option value="Ambiental">Ambiental</option>
+        <option value="Civil">Civil</option>
+        <option value="Laboral">Laboral</option>
+      </select>
     </div>
     <div class="sf" style="margin-bottom:4px;"><label>Selecciona los tipos de monto que aplican</label></div>
     <div class="ctype-row">
@@ -1235,7 +1236,7 @@ ambiental:{l:"Ambiental",b:"ba",items:[
 //  2) Pega aquí la URL que termina en /exec :
 // ══════════════════════════════════════════════════════════════
 const SYNC_URL = "https://script.google.com/macros/s/AKfycbxvjCCZK3G_ItBAJoQuh0fNNZjmfWLyWobVfNcHI57Um-zaEae5HK6gYODYspGXqeThwg/exec"; // URL del Web App del despacho
-  const SYNC_INTERVALO_MS = 20000; // consulta cambios cada 20 s
+const SYNC_INTERVALO_MS = 20000; // consulta cambios cada 20 s
 
 const SYNC_KEYS = ["ma_folio_registry","ma_custom_items","MA_clientes_extra","ma_servicios_extra","ma_overrides_base"];
 const _lsSet = localStorage.setItem.bind(localStorage);
@@ -1709,7 +1710,7 @@ function initTiSearch(){
     if(!matches.length){drop.classList.remove("open");return;}
     matches.forEach((it)=>{
       const tot=it.d+it.t+it.h;
-      const ps=it.v?"Por cotizar":(tot>0?"Ref: "+mxn(tot):"");
+      const ps=tot>0?"Ref: "+mxn(tot):"";
       const el=document.createElement("div");
       el.className="ti-ac-item";
       el.innerHTML='<div class="ti-ac-item-n">'+it.n+'</div><div class="ti-ac-item-s">'+it.al+' · '+it.s+'</div>'+(ps?'<div class="ti-ac-item-p">'+ps+'</div>':"");
@@ -1755,7 +1756,7 @@ function selA(a){
     const el=document.createElement("div");
     el.className="ti";el.dataset.id=it.id;
     const tot=it.d+it.t+it.h;
-    const ps=it.v?"Por cotizar":(tot>0?"Ref: "+mxn(tot):(it.nota||""));
+    const ps=tot>0?"Ref: "+mxn(tot):(it.nota||"");
     el.innerHTML='<div class="ti-n">'+it.n+'</div><div class="ti-p">'+ps+'</div>';
     el.onclick=()=>selT(it.id);
     list.appendChild(el);
@@ -1835,9 +1836,9 @@ function render(){
       descuentoBadge='<span class="tag-n" style="background:#f0f9f4;color:#2d7a4f;border-color:#a8d5bc;">-20% iguala</span>';
       tOriginalHtml='<div style="font-size:10px;color:#aaa;text-decoration:line-through;margin-top:1px;">'+mxn(it.t)+'</div>';
     }
-    const dsRaw=(it.d>0||it._zd)?mxn(it.d):(it.v?"Variable":"—");
-    const tsRaw=(tReal>0||it._zt)?mxn(tReal):(it.v?"Variable":"—");
-    const hsRaw=(it.h>0||it._zh)?mxn(it.h):(it.v?"Cotizar":"—");
+    const dsRaw=it.d>0?mxn(it.d):(it.v?"Variable":"—");
+    const tsRaw=tReal>0?mxn(tReal):(it.v?"Variable":"—");
+    const hsRaw=it.h>0?mxn(it.h):(it.v?"Cotizar":"—");
     const det=it.detalle?'<div class="cn-d">'+it.detalle+'</div>':"";
     const firmaId="firma_"+i;
     const notaHtml='<span class="tag-n editable-nota" contenteditable="true" data-idx="'+i+'" style="cursor:text;">'+(it.nota||"+ nota")+'</span>';
@@ -1877,10 +1878,7 @@ function render(){
         const raw=el.textContent.replace(/[^0-9]/g,"");
         const val=parseInt(raw)||0;
         // Guardar precio BASE — el render aplica el descuento iguala al mostrar
-        if(!isNaN(idx)&&items[idx]){
-          items[idx][tipo]=val;
-          items[idx]["_z"+tipo]=(raw!==""&&val===0);   // cero escrito a propósito → se muestra $0
-        }
+        if(!isNaN(idx)&&items[idx])items[idx][tipo]=val;
         render();
       });
       el.addEventListener("keydown",e=>{
@@ -2105,9 +2103,9 @@ function buildPreview(){
       descBadgePv='<span class="pv-tag" style="background:#f0f9f4;color:#2d7a4f;border-color:#a8d5bc;">−20% iguala</span>';
       tOriginalHtmlPv='<div style="font-size:10px;color:#aaa;text-decoration:line-through;margin-top:1px;">'+mxn(it.t)+'</div>';
     }
-    const dsRaw=(it.d>0||it._zd)?mxn(it.d):(it.v?"Variable":"—");
-    const tsRaw=(tRealPv>0||it._zt)?mxn(tRealPv):(it.v?"Variable":"—");
-    const hsRaw=(it.h>0||it._zh)?mxn(it.h):(it.v?"Cotizar":"—");
+    const dsRaw=it.d>0?mxn(it.d):(it.v?"Variable":"—");
+    const tsRaw=tRealPv>0?mxn(tRealPv):(it.v?"Variable":"—");
+    const hsRaw=it.h>0?mxn(it.h):(it.v?"Cotizar":"—");
     const det=it.detalle?'<div class="pv-det">'+it.detalle+'</div>':"";
     const nota='<span class="pv-tag editable-nota-pv" contenteditable="'+editMode+'" data-idx="'+i+'" style="cursor:text;'+(editMode?'':'')+'">'+(it.nota||(editMode?"+ nota":""))+'</span>';
     const firmaId="pvf_"+i;
@@ -2163,12 +2161,11 @@ function buildPreview(){
         if(!isNaN(idx)&&items[idx]){
           // Guardar precio BASE — el render aplica el descuento iguala al mostrar
           items[idx][tipo]=val;
-          items[idx]["_z"+tipo]=(raw!==""&&val===0);
         }
         // Formatear mostrando precio con descuento si aplica
         const esIg2=document.getElementById("chk-iguala")&&document.getElementById("chk-iguala").checked;
         const tReal2=esIg2&&tipo==="t"&&val>0?Math.round(val*0.80):val;
-        el.textContent=(tReal2>0||(raw!==""&&val===0))?mxn(tReal2):"—";
+        el.textContent=tReal2>0?mxn(tReal2):"—";
         recalcPvTots();
       });
       el.addEventListener("keydown",e=>{
@@ -2467,39 +2464,32 @@ function _nombreCotizacion(){
   if(!n)return currentFolio+".pdf";
   return n+(asunto?" - "+asunto:"")+".pdf";
 }
+function descargarPDF(){
+  setMode("view");
+  // ── AUTO-GUARDAR en el registry al descargar ──────────────────
+  (function autoGuardar(){
+    const idx=folioRegistry.findIndex(f=>f.folio===currentFolio);
+    if(idx<0)return; // sin folio activo
+    folioRegistry[idx].snapshot={
+      items:JSON.parse(JSON.stringify(items)),
+      c1:g("c1"),c2:g("c2"),c3:g("c3"),c4:g("c4"),c5:g("c5"),c6:g("c6"),c7:g("c7"),
+      c8:document.getElementById("c8")?document.getElementById("c8").value:"",
+      notas:document.getElementById("notas").value.trim(),
+      esIguala:document.getElementById("chk-iguala").checked,
+      impacto:(getImpacto()||{}).value||null,
+      apertura:(getApertura()||{}).value||null,
+      esNuevo:document.getElementById("chk-nuevo").checked,
+      savedAt:new Date().toLocaleString("es-MX")
+    };
+    folioRegistry[idx].tienePDF=true;
+    _limpiarClausulasPC(folioRegistry[idx]);
+    localStorage.setItem("ma_folio_registry",JSON.stringify(folioRegistry));
+    _checarReautorizacion(idx);
+    renderFolioList();
+  })();
+  // ─────────────────────────────────────────────────────────────
 
-// ── Convierte el PDF adjunto en imágenes (una por página) para imprimirlas
-//    como hojas finales del documento ──
-async function _adjuntoComoImagenes(){
-  if(!adjuntoFile)return null;
-  if(!/\.pdf$/i.test(adjuntoFile.name))return null;   // docx: usa el método de fusión
-  if(typeof pdfjsLib==="undefined")return null;
-  try{
-    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-    const buf=await adjuntoFile.arrayBuffer();
-    const doc=await pdfjsLib.getDocument({data:buf}).promise;
-    const cont=document.createElement("div");
-    cont.id="adjunto-print";
-    for(let i=1;i<=doc.numPages;i++){
-      const page=await doc.getPage(i);
-      const vp=page.getViewport({scale:2});
-      const canvas=document.createElement("canvas");
-      canvas.width=vp.width;canvas.height=vp.height;
-      await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;
-      const img=document.createElement("img");
-      img.src=canvas.toDataURL("image/jpeg",0.92);
-      const wrap=document.createElement("div");
-      wrap.className="adjunto-pagina";
-      wrap.appendChild(img);
-      cont.appendChild(wrap);
-    }
-    return cont;
-  }catch(e){return null;}
-}
-
-// Plan B (método anterior): fotografiar la cotización y fusionar con pdf-lib
-function _fusionConCapturas(){
-
+  if(adjuntoFile){
     // Con adjunto: generamos los bytes del PDF vía html2pdf y fusionamos
     const toastGen=document.createElement("div");
     toastGen.id="__gen_toast__";
@@ -2536,55 +2526,6 @@ function _fusionConCapturas(){
         imprimirComoFallback();
       });
     },600);
-    }
-
-function descargarPDF(){
-  setMode("view");
-  // ── AUTO-GUARDAR en el registry al descargar ──────────────────
-  (function autoGuardar(){
-    const idx=folioRegistry.findIndex(f=>f.folio===currentFolio);
-    if(idx<0)return; // sin folio activo
-    folioRegistry[idx].snapshot={
-      items:JSON.parse(JSON.stringify(items)),
-      c1:g("c1"),c2:g("c2"),c3:g("c3"),c4:g("c4"),c5:g("c5"),c6:g("c6"),c7:g("c7"),
-      c8:document.getElementById("c8")?document.getElementById("c8").value:"",
-      notas:document.getElementById("notas").value.trim(),
-      esIguala:document.getElementById("chk-iguala").checked,
-      impacto:(getImpacto()||{}).value||null,
-      apertura:(getApertura()||{}).value||null,
-      esNuevo:document.getElementById("chk-nuevo").checked,
-      savedAt:new Date().toLocaleString("es-MX")
-    };
-    folioRegistry[idx].tienePDF=true;
-    _limpiarClausulasPC(folioRegistry[idx]);
-    localStorage.setItem("ma_folio_registry",JSON.stringify(folioRegistry));
-    _checarReautorizacion(idx);
-    renderFolioList();
-  })();
-  // ─────────────────────────────────────────────────────────────
-
-  if(adjuntoFile){
-    // ── El anexo se convierte en IMÁGENES y se agrega como hojas finales.
-    //    La cotización se imprime por la MISMA ruta que sin adjunto. ──
-    const toastA=document.createElement("div");
-    toastA.id="__adj_toast__";
-    toastA.style.cssText="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#2563a8;color:#fff;padding:10px 20px;border-radius:20px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);";
-    toastA.textContent="Preparando el anexo…";
-    document.body.appendChild(toastA);
-    _adjuntoComoImagenes().then(cont=>{
-      document.getElementById("__adj_toast__")?.remove();
-      if(!cont){ _fusionConCapturas(); return; }   // plan B: método anterior
-      const prev=document.getElementById("adjunto-print");
-      if(prev)prev.remove();
-      document.getElementById("preview-overlay").appendChild(cont);
-      const limpiar=()=>{const c=document.getElementById("adjunto-print");if(c)c.remove();window.removeEventListener("afterprint",limpiar);};
-      window.addEventListener("afterprint",limpiar);
-      setTimeout(limpiar,60000);
-      imprimirComoFallback();
-    }).catch(()=>{
-      document.getElementById("__adj_toast__")?.remove();
-      _fusionConCapturas();
-    });
     return;
   }
 
@@ -2680,18 +2621,21 @@ function addCustomItem(){
   const dVal=ctypeActive.has("d")?parseFloat(document.getElementById("custom-amount-d")?.value||0)||0:0;
   const hVal=ctypeActive.has("h")?parseFloat(document.getElementById("custom-amount-h")?.value||0)||0:0;
 
-  const area=getCustomArea();
+  const tabArea=getCustomArea();
+  const selArea=sub||tabArea.al;
+  const areaMap={'Giros Mercantiles':{al:'Giros Mercantiles',ab:'bg'},'Jurídico':{al:'Jurídico',ab:'bj'},'Obras':{al:'Obras',ab:'bo'},'Protección Civil':{al:'Protección Civil',ab:'bp'},'Ambiental':{al:'Ambiental',ab:'ba'},'Civil':{al:'Civil',ab:'bj'},'Laboral':{al:'Laboral',ab:'bj'}};
+  const areaObj=areaMap[selArea]||{al:selArea||tabArea.al,ab:tabArea.ab};
   const it={
     id:"c_"+Date.now(),
-    s: sub||area.al,
+    s: selArea,
     n: name,
     d: dVal,
     t: tVal,
     h: hVal,
     v: (tVal===0&&dVal===0&&hVal===0),
     nota: nota||"",
-    al: area.al,
-    ab: area.ab
+    al: areaObj.al,
+    ab: areaObj.ab
   };
   items.push(it);
   render();
@@ -2738,7 +2682,7 @@ function saveCustomToBase(){
 
 function clearCustomForm(){
   document.getElementById("custom-name").value="";
-  document.getElementById("custom-sub").value="";
+  document.getElementById("custom-sub").selectedIndex=0;
   document.getElementById("custom-nota").value="";
   ctypeActive.clear();
   document.querySelectorAll(".ctype-btn").forEach(b=>b.classList.remove("on"));
@@ -2888,16 +2832,18 @@ function renderFolioList(){
     if(f._deleted)return;
     if(term&&!_folioCoincide(f,term))return;
     _mostrados++;
-    const isAut=f.status==="autorizada";
+    const isAut=f.status==="autorizada"||f.status==="autorizada-parcial";
     const div=document.createElement("div");
     div.className="folio-row status-"+f.status;
     const compBadge=f.isComplementaria?'<span class="comp-badge">COMP</span>':"";
     const areasStr=f.areas&&f.areas.length?'<span style="font-size:9px;color:var(--ink3);">'+f.areas.join(", ")+'</span>':"";
     const statusOptions=["pendiente","autorizada","rechazada","recotizar"];
     const selHtml=isAut?
-      '<span class="folio-badge fb-autorizada">Autorizada</span>':
-      '<select class="folio-sel" onchange="cambiarStatus('+idx+', this.value)">'+
-        statusOptions.map(s=>'<option value="'+s+'"'+(f.status===s?" selected":"")+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>').join("")+
+      (f.status==="autorizada-parcial"
+        ?'<span class="folio-badge" style="background:#fff7ed;color:#d97706;">Autorizada parcialmente</span>'
+        :'<span class="folio-badge fb-autorizada">Autorizada</span>')
+      :'<select class="folio-sel" onchange="cambiarStatus('+idx+', this.value)">'+
+        statusOptions.map(s=>'<option value="'+s+'"'+(f.status===s?' selected':'')+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>').join("")+
       '</select>';
     const pdfBadge=f.tienePDF?'<span style="font-size:9px;background:#eff5fd;color:#2563a8;border:1px solid #c8dcf5;padding:1px 7px;border-radius:20px;font-weight:600;margin-left:5px;">PDF</span>':"";
     const pcBadge=(f._aportePC&&!f._aportePC.integrado)?'<span title="Protección Civil ya cargó sus conceptos" style="margin-left:5px;vertical-align:middle;display:inline-block;">'+_pcIcon(14)+'</span>':"";
@@ -2989,7 +2935,7 @@ function marcarFacturado(idx){
 }
 
 function exportarAutorizadasAExcel(){
-  const aut=folioRegistry.filter(f=>!f._deleted&&f.status==="autorizada");
+  const aut=folioRegistry.filter(f=>!f._deleted&&(f.status==="autorizada"||f.status==="autorizada-parcial"));
   if(!aut.length){alert("No hay cotizaciones con estatus AUTORIZADA para exportar.");return;}
   const payload={
     exportado:new Date().toLocaleString("es-MX"),
@@ -3566,21 +3512,14 @@ function guardarFormServicio(){
       h:parseFloat(document.getElementById("srvf_h").value)||0,
       nota:document.getElementById("srvf_nota").value.trim()
     };
-    const aKey=document.getElementById("srvf_a").value;
-    ovr[baseId].aKey=aKey;                       // el área elegida SE GUARDA en el override
     setOverridesBase(ovr);
-    // Actualizar en memoria: encontrar el concepto en el área donde esté y moverlo si cambió
-    let itemRef=null,areaOrigen=null;
-    Object.keys(TAB).forEach(k=>{
-      const f=TAB[k].items.find(i=>i.id===baseId);
-      if(f){itemRef=f;areaOrigen=k;}
-    });
-    if(itemRef){
-      if(!itemRef._orig)itemRef._orig={n:itemRef.n,s:itemRef.s,t:itemRef.t,d:itemRef.d,h:itemRef.h,nota:itemRef.nota,aKey:areaOrigen};
-      Object.assign(itemRef,ovr[baseId]);
-      if(areaOrigen!==aKey&&TAB[aKey]){
-        TAB[areaOrigen].items=TAB[areaOrigen].items.filter(i=>i.id!==baseId);
-        TAB[aKey].items.push(itemRef);
+    // Actualizar en memoria también
+    const aKey=document.getElementById("srvf_a").value;
+    if(TAB[aKey]){
+      const it=TAB[aKey].items.find(i=>i.id===baseId);
+      if(it){
+        if(!it._orig)it._orig={n:it.n,s:it.s,t:it.t,d:it.d,h:it.h,nota:it.nota};
+        Object.assign(it,ovr[baseId]);
       }
     }
     baseIdEl.value="";
@@ -3689,27 +3628,18 @@ function resetServicioBase(id){
 
 function aplicarOverridesEnTAB(){
   // Reconstruir TAB items desde la versión original + overrides
+  // Esto se hace guardando los originales al inicio
   const overrides=getOverridesBase();
   Object.keys(TAB).forEach(aKey=>{
     TAB[aKey].items.forEach(it=>{
       const ovr=overrides[it.id];
       if(ovr){
-        if(!it._orig)it._orig={n:it.n,s:it.s,t:it.t,d:it.d,h:it.h,nota:it.nota,aKey:aKey};
         Object.assign(it,ovr);
       } else if(it._orig){
+        // Restaurar original
         Object.assign(it,it._orig);
       }
     });
-  });
-  // Mover de área los conceptos cuyo override lo indique
-  Object.keys(TAB).forEach(aKey=>{
-    const quedan=[];
-    TAB[aKey].items.forEach(it=>{
-      const destino=overrides[it.id]&&overrides[it.id].aKey;
-      if(destino&&destino!==aKey&&TAB[destino]){TAB[destino].items.push(it);}
-      else quedan.push(it);
-    });
-    TAB[aKey].items=quedan;
   });
 }
 
@@ -4059,7 +3989,7 @@ function _crearHojaCliente(nombre){
 function actualizarEC(folioIdx){
   const f=folioRegistry[folioIdx];
   if(!f){return;}
-  if(f.status!=="autorizada"){_xlToast("⚠️ Solo cotizaciones autorizadas","#d97706");return;}
+  if(f.status!=="autorizada"&&f.status!=="autorizada-parcial"){_xlToast("⚠️ Solo cotizaciones autorizadas","#d97706");return;}
   if(!_ecWB){_xlToast("⚠️ Carga primero el Excel de estados de cuenta","#c0392b");return;}
   if(!f.snapshot){_xlToast("⚠️ Este folio no tiene snapshot de conceptos. Abre la vista previa y guárdala primero.","#c0392b");return;}
   const clienteRaw=(f.cliente||"").trim();
@@ -4462,7 +4392,10 @@ function confirmarAutorizacion(idx){
   f.asuntoOrden=asuntoVal;
   f._modoTrans=modo;
   f._anticipoMonto=antMonto;
-  f.status="autorizada";
+  // Si algún concepto quedó sin autorizar → parcial
+  const totalItems=(f.snapshot&&f.snapshot.items||[]).length;
+  const totalAut=Object.values(autorizados).filter(Boolean).length;
+  f.status=totalAut<totalItems?"autorizada-parcial":"autorizada";
   f._fpAutorizada=_fpSnapshot(f.snapshot);
   f._m=_mNuevo();
   localStorage.setItem("ma_folio_registry",JSON.stringify(folioRegistry));
@@ -4486,8 +4419,9 @@ function _ordenServicioHTML(f){
   const ubiHtml=String(o.ubicacion||"").trim()
     ?'<a href="'+mapsUrl+'" target="_blank" style="color:#2563a8;text-decoration:underline;">'+_escHtml(o.ubicacion)+' 📍</a>'
     :"Por definir";
-  const filas=s.items.map(it=>{
-    const aut=it._aut!==false;
+  // Solo mostrar conceptos autorizados
+  const filas=s.items.filter(it=>it._aut!==false).map(it=>{
+    const aut=true;
     return '<tr>'+
       '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#b07d2e;white-space:nowrap;">'+_escHtml(it.al||"")+'</td>'+
       '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:11px;color:#1a1f2e;">'+_escHtml(it.n)+(it.s?'<br><span style="font-size:9px;color:#8890a4;">'+_escHtml(it.s)+'</span>':"")+'</td>'+
