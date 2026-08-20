@@ -1033,6 +1033,42 @@ const CLIENTES = [{"n": "COLMILLO", "d": "MAZARYK 124 INT. 5, POLANCO", "g": "RE
 // ── TABULADOR ──────────────────────────────────────────────────
 
 // ── CLASIFICACION HELPERS (checkboxes independientes) ─────────────
+
+// === v17: normalización UTF-8 / reparación de caracteres para impresión ===
+function _fixTextoUTF8(v){
+  if(v==null) return v;
+  let s=String(v);
+  // Reparar mojibake UTF-8 interpretado como Latin-1 (Ã±, Ã¡, Â², etc.)
+  if(/[ÃÂ]/.test(s)){
+    try{
+      const bytes=Uint8Array.from([...s].map(ch=>ch.charCodeAt(0)&255));
+      const dec=new TextDecoder('utf-8',{fatal:false}).decode(bytes);
+      if(dec && !dec.includes('�')) s=dec;
+    }catch(e){}
+  }
+  // Reparaciones de corrupciones históricas observadas en _KV / textos impresos.
+  const reps=[
+    [/desempe\?o/gi,'desempeño'],[/desempeo/gi,'desempeño'],
+    [/protecci\?n/gi,'protección'],[/informaci\?n/gi,'información'],[/actualizaci\?n/gi,'actualización'],
+    [/autorizaci\?n/gi,'autorización'],[/integraci\?n/gi,'integración'],[/capacitaci\?n/gi,'capacitación'],
+    [/ju\?rez/gi,'Juárez'],[/alcald\?a/gi,'alcaldía'],[/cuauht\?moc/gi,'Cuauhtémoc'],
+    [/obreg\?n/gi,'Obregón'],[/coyoac\?n/gi,'Coyoacán'],[/miguel \?ngel/gi,'Miguel Ángel'],
+    [/pizzer\?a/gi,'pizzería'],[/cafeter\?a/gi,'cafetería'],[/mescaler\?a/gi,'mescalería'],
+    [/secci\?n/gi,'sección'],[/ampliaci\?n/gi,'ampliación'],[/gonz\?lez/gi,'González'],
+    [/avenda\?o/gi,'Avendaño'],[/an\?huac/gi,'Anáhuac'],[/cl\?nica/gi,'clínica'],[/cl\?nicas/gi,'clínicas'],
+    [/m\?(?=[\s,.;)\]\/]|$)/gi,'m²']
+  ];
+  for(const [a,b] of reps) s=s.replace(a,b);
+  try{s=s.normalize('NFC');}catch(e){}
+  return s;
+}
+function _normalizarDOMUTF8(root){
+  root=root||document.body;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const nodes=[]; while(w.nextNode()) nodes.push(w.currentNode);
+  nodes.forEach(n=>{ const x=_fixTextoUTF8(n.nodeValue); if(x!==n.nodeValue)n.nodeValue=x; });
+  root.querySelectorAll('input,textarea').forEach(el=>{if(typeof el.value==='string')el.value=_fixTextoUTF8(el.value);});
+}
 function getImpacto(){
   const bajo=document.getElementById("chk-bajo");
   const alto=document.getElementById("chk-alto");
@@ -1474,7 +1510,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v15 / API v35", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v16 / API v37", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -2542,6 +2578,7 @@ function _nombreCotizacion(){
   return n+(asunto?" - "+asunto:"")+".pdf";
 }
 function descargarPDF(){
+  _normalizarDOMUTF8(document.body);
   setMode("view");
   // ── AUTO-GUARDAR en el registry al descargar ──────────────────
   (function autoGuardar(){
@@ -2639,6 +2676,7 @@ function imprimirComoFallback(){
     .pv-title,.pv-hdr{page-break-after:avoid!important;}
   }`;
   setTimeout(()=>{
+    _normalizarDOMUTF8(document.body);
     window.print();
     setTimeout(()=>{document.title=prev;},2000);
   },350);
@@ -2934,7 +2972,7 @@ function renderFolioList(){
     const editBtn=f.snapshot?'<button class="btn-comp" style="background:var(--gold-bg);border-color:var(--gold-border);color:var(--gold);" onclick="editarOrden('+idx+')">✏️ Editar</button>':"";
     const compBtn="";   // complementarias desactivadas: se edita la misma cotización
     const ecBtn=isAut?'<button class="btn-comp" style="background:#eff5fd;border-color:#c8dcf5;color:#2563a8;" onclick="actualizarAmbos('+idx+')" title="Actualizar estado de cuenta y actividades">📊 EC</button>':"";
-    const pagadoBtn=isAut?'<button class="btn-comp" style="background:#f0f9f4;border-color:#bbf7d0;color:#166534;" onclick="marcarPagadoEC('+idx+')" title="Marcar como pagado en estados de cuenta">💰 Pagado</button>':"";
+    const pagadoBtn=isAut?'<button class="btn-comp" style="background:#f0f9f4;border-color:#bbf7d0;color:#166534;" onclick="marcarPagadoEC('+idx+')" title="Registrar y distribuir un pago">💰 Registrar pago</button>':"";
     const ordenBtn=isAut?'<button class="btn-comp" style="background:#fdf6ec;border-color:#e8d5b0;color:#b07d2e;" onclick="verOrdenServicio('+idx+')" title="Ver / descargar la Orden de Servicio">📄 Orden</button>':"";
     const delBtn='<button class="btn-comp" style="background:var(--red-bg);border-color:#f0b8b4;color:var(--red);" onclick="eliminarFolio('+idx+')" title="Eliminar folio">🗑</button>';
     const aliasHtml=f.alias?' <span style="font-size:10px;color:var(--gold);font-weight:600;">'+_escHtml(f.alias)+'</span>':"";
@@ -4166,44 +4204,106 @@ function actualizarAmbos(folioIdx){
 function marcarPagadoEC(folioIdx){
   const f=folioRegistry[folioIdx];
   if(!f)return;
-  if(typeof _syncURL==="function" && _syncURL()){_apiPagado(folioIdx);return;}
-  if(!_ecWB){_xlToast("⚠️ Carga el Excel de estados de cuenta","#c0392b");return;}
-  const fechaDefault=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
-  const fechaPago=prompt("Fecha de pago (DD/MM/AAAA):",fechaDefault);
-  if(!fechaPago)return;
-  const clienteUpper=(f.cliente||"").trim().toUpperCase();
-  const sheetName=_ecWB.SheetNames.find(n=>n.trim().toUpperCase()===clienteUpper);
-  if(!sheetName){_xlToast("⚠️ No se encontró la hoja de "+f.cliente+". ¿Ya ejecutaste '📊 EC' para esta cotización?","#c0392b");return;}
-  const ws=_ecWB.Sheets[sheetName];
-  const items=(f.snapshot&&f.snapshot.items)||[];
-  const hasArea=_hasAreaCol(ws);
-  const colEstado=hasArea?6:5;
-  const colFecha=hasArea?7:6;
-  const ref=ws["!ref"]||"A1";
-  const range=XLSX.utils.decode_range(ref);
-  let found=0;
-  items.forEach(item=>{
-    for(let r=2;r<=range.e.r;r++){
-      const cA=ws[XLSX.utils.encode_cell({r,c:0})];
-      if(cA&&String(cA.v||"").trim()===String(item.n||"").trim()){
-        _setCell(ws,r,colEstado,"s","Pagado");
-        _setCell(ws,r,colFecha,"s",fechaPago);
-        found++;
-      }
-    }
-  });
-  if(found){
-    if(_actWB)_marcarPagadoAct(f,fechaPago);
-    f._pagadoFecha=fechaPago;
-    f._m=_mNuevo();
-    _guardarRegistroLocal();
-    _ecDirty=true;
-    _renderExcelPanel();
-    renderFolioList();
-    _xlToast("✅ "+found+" concepto(s) marcados como Pagado — "+fechaPago);
-  }else{
-    _xlToast("⚠️ No se encontraron los conceptos en la hoja. Asegúrate de haber ejecutado '📊 EC' primero.","#d97706");
+  if(typeof _syncURL==="function" && _syncURL()){
+    abrirModalRegistrarPago(folioIdx);
+    return;
   }
+  _xlToast("⚠️ El nuevo registro de pagos requiere conexión con la nube para proteger saldos y evitar duplicados.","#c0392b");
+}
+
+function _pagoMoneda(n){return Number(n||0).toLocaleString("es-MX",{style:"currency",currency:"MXN",minimumFractionDigits:2});}
+function _pagoEsc(s){return String(s??"").replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;"}[c]));}
+function _pagoItems(f){return ((f.snapshot&&f.snapshot.items)||[]).filter(i=>i&&i._aut!==false).map((i,k)=>({
+  k, n:String(i.n||("Concepto "+(k+1))), h:Number(i.h||0), t:Number(i.t||0), d:Number(i.d||0), area:String(i.al||i.aKey||"")
+}));}
+
+async function _pagoEstadoNube(f,items){
+  const u=_syncURL();
+  const res=await fetch(u,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({
+    action:"estadoPago",cliente:f.cliente,folio:f.folio,conceptos:items.map(x=>x.n)
+  })});
+  return await res.json();
+}
+
+async function abrirModalRegistrarPago(idx){
+  const f=folioRegistry[idx]; if(!f)return;
+  const items=_pagoItems(f);
+  if(!items.length){_xlToast("⚠️ No hay conceptos autorizados para aplicar el pago.","#c0392b");return;}
+  _xlToast("⏳ Consultando saldos actuales…","#2563a8");
+  let estado={ok:true,conceptos:{},derechosEstado:""};
+  try{ estado=await _pagoEstadoNube(f,items); if(!estado.ok)throw new Error(estado.error||"No se pudo consultar saldo"); }
+  catch(e){_xlToast("❌ No pude consultar los saldos actuales: "+e.message,"#c0392b");return;}
+
+  const saldo=items.map(x=>{
+    const e=(estado.conceptos&&estado.conceptos[x.n])||{};
+    const pagH=Number(e.pagadoH||0), pagT=Number(e.pagadoT||0);
+    return {...x,pagH,pagT,saldoH:Math.max(x.h-pagH,0),saldoT:Math.max(x.t-pagT,0)};
+  });
+  const totalSaldo=saldo.reduce((s,x)=>s+x.saldoH+x.saldoT,0);
+  const totalDerechos=items.reduce((s,x)=>s+x.d,0);
+  if(totalSaldo<=0 && totalDerechos<=0){_xlToast("✅ Esta cotización ya no tiene saldo pendiente.");return;}
+
+  document.getElementById("modal-pago")?.remove();
+  const m=document.createElement("div");m.id="modal-pago";
+  m.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.68);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow:auto";
+  const rows=saldo.map((x,i)=>`<tr data-i="${i}">
+    <td style="padding:8px;border-bottom:1px solid #e5e7eb"><input type="checkbox" class="pgSel" checked></td>
+    <td style="padding:8px;border-bottom:1px solid #e5e7eb"><b>${_pagoEsc(x.n)}</b><div style="font-size:11px;color:#64748b">Saldo H ${_pagoMoneda(x.saldoH)} · T ${_pagoMoneda(x.saldoT)}${x.d?" · Dtos "+_pagoMoneda(x.d):""}</div></td>
+    <td style="padding:8px;border-bottom:1px solid #e5e7eb"><input class="pgH" type="number" min="0" max="${x.saldoH}" step="0.01" value="0" style="width:110px"></td>
+    <td style="padding:8px;border-bottom:1px solid #e5e7eb"><input class="pgT" type="number" min="0" max="${x.saldoT}" step="0.01" value="0" style="width:110px"></td>
+  </tr>`).join("");
+  const derBlock=totalDerechos>0?`<div style="margin-top:14px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px">
+    <b>Derechos de Tesorería detectados: ${_pagoMoneda(totalDerechos)}</b>
+    <div style="margin-top:8px;display:grid;gap:6px">
+      <label><input type="radio" name="pgDer" value="despacho"> El cliente nos entregó también el dinero de los derechos</label>
+      <label><input type="radio" name="pgDer" value="cliente"> El cliente ya pagó los derechos directamente</label>
+      <label><input type="radio" name="pgDer" value="pendiente" checked> El pago de derechos sigue pendiente</label>
+    </div>
+  </div>`:"";
+  m.innerHTML=`<div style="width:min(920px,96vw);background:white;border-radius:16px;box-shadow:0 20px 60px #0005;padding:20px;font-family:Arial,sans-serif">
+    <div style="display:flex;justify-content:space-between;gap:12px"><div><h2 style="margin:0">💰 Registrar pago</h2><div style="color:#64748b;margin-top:4px">${_pagoEsc(f.folio)} · ${_pagoEsc(f.cliente)}</div></div><button id="pgCerrar" style="border:0;background:#f1f5f9;border-radius:8px;padding:8px 12px;cursor:pointer">✕</button></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+      <label>Tipo de pago<select id="pgModo" style="width:100%;padding:8px;margin-top:4px"><option value="liquidacion">Liquidación total</option><option value="parcial">Anticipo / pago parcial</option></select></label>
+      <label>Monto recibido para honorarios/terceros<input id="pgMonto" type="number" min="0" step="0.01" value="${totalSaldo.toFixed(2)}" style="width:100%;box-sizing:border-box;padding:8px;margin-top:4px"></label>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0">
+      <button id="pgCompleto" class="btn-comp">✓ Completar seleccionados</button>
+      <button id="pgProporcional" class="btn-comp">⇄ Distribuir proporcionalmente</button>
+      <button id="pgAuto" class="btn-comp">→ Aplicar automático H→T</button>
+      <button id="pgLimpiar" class="btn-comp">Limpiar</button>
+    </div>
+    <div style="overflow:auto;max-height:340px;border:1px solid #e5e7eb;border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f8fafc"><th></th><th style="text-align:left;padding:8px">Concepto</th><th>Aplicar a Honorarios</th><th>Aplicar a Terceros</th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${derBlock}
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px"><div id="pgResumen" style="font-weight:700"></div><button id="pgGuardar" style="border:0;background:#166534;color:white;border-radius:10px;padding:11px 18px;font-weight:700;cursor:pointer">CONFIRMAR PAGO</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  const q=s=>m.querySelector(s), qa=s=>[...m.querySelectorAll(s)];
+  const monto=q("#pgMonto"), modo=q("#pgModo"), resumen=q("#pgResumen");
+  const actualiza=()=>{const a=qa("tbody tr").reduce((s,tr)=>s+(Number(tr.querySelector(".pgH").value)||0)+(Number(tr.querySelector(".pgT").value)||0),0);resumen.textContent="Aplicado: "+_pagoMoneda(a)+" · Recibido: "+_pagoMoneda(Number(monto.value)||0);return a;};
+  qa("input").forEach(x=>x.addEventListener("input",actualiza));
+  q("#pgCerrar").onclick=()=>m.remove();
+  modo.onchange=()=>{if(modo.value==="liquidacion"){monto.value=totalSaldo.toFixed(2);qa("tbody tr").forEach((tr,i)=>{tr.querySelector(".pgSel").checked=true;tr.querySelector(".pgH").value=saldo[i].saldoH;tr.querySelector(".pgT").value=saldo[i].saldoT;});}else{qa("tbody tr").forEach(tr=>{tr.querySelector(".pgH").value=0;tr.querySelector(".pgT").value=0;});monto.value="";}actualiza();};
+  q("#pgLimpiar").onclick=()=>{qa("tbody tr").forEach(tr=>{tr.querySelector(".pgH").value=0;tr.querySelector(".pgT").value=0;});actualiza();};
+  q("#pgCompleto").onclick=()=>{qa("tbody tr").forEach((tr,i)=>{if(tr.querySelector(".pgSel").checked){tr.querySelector(".pgH").value=saldo[i].saldoH;tr.querySelector(".pgT").value=saldo[i].saldoT;}else{tr.querySelector(".pgH").value=0;tr.querySelector(".pgT").value=0;}});monto.value=actualiza().toFixed(2);actualiza();};
+  q("#pgProporcional").onclick=()=>{let disp=Number(monto.value)||0;const eleg=qa("tbody tr").map((tr,i)=>({tr,i,base:tr.querySelector(".pgSel").checked?(saldo[i].saldoH+saldo[i].saldoT):0})).filter(x=>x.base>0);const base=eleg.reduce((s,x)=>s+x.base,0);let asign=0;eleg.forEach((x,j)=>{let v=j===eleg.length-1?Math.max(disp-asign,0):Math.min(x.base,Math.round((disp*x.base/base)*100)/100);v=Math.min(v,x.base);let h=Math.min(saldo[x.i].saldoH,v),t=Math.min(saldo[x.i].saldoT,Math.max(v-h,0));x.tr.querySelector(".pgH").value=h.toFixed(2);x.tr.querySelector(".pgT").value=t.toFixed(2);asign+=h+t;});actualiza();};
+  q("#pgAuto").onclick=()=>{let rem=Number(monto.value)||0;qa("tbody tr").forEach((tr,i)=>{let h=0,t=0;if(tr.querySelector(".pgSel").checked&&rem>0){h=Math.min(saldo[i].saldoH,rem);rem-=h;t=Math.min(saldo[i].saldoT,rem);rem-=t;}tr.querySelector(".pgH").value=h.toFixed(2);tr.querySelector(".pgT").value=t.toFixed(2);});actualiza();};
+  q("#pgGuardar").onclick=async()=>{
+    const recibido=Number(monto.value)||0, aplicado=actualiza();
+    if(recibido<0.01 && totalDerechos<=0){alert("Captura un monto recibido.");return;}
+    if(Math.abs(aplicado-recibido)>0.01){alert("La suma aplicada debe ser exactamente igual al monto recibido.\n\nAplicado: "+_pagoMoneda(aplicado)+"\nRecibido: "+_pagoMoneda(recibido));return;}
+    const aplicaciones=qa("tbody tr").map((tr,i)=>({concepto:saldo[i].n,area:saldo[i].area,honorarios:Number(tr.querySelector(".pgH").value)||0,terceros:Number(tr.querySelector(".pgT").value)||0})).filter(x=>x.honorarios>0||x.terceros>0);
+    const derechosEstado=totalDerechos?((q('input[name="pgDer"]:checked')||{}).value||"pendiente"):"no_aplica";
+    const fecha=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
+    if(!confirm("Registrar este pago por "+_pagoMoneda(recibido)+(derechosEstado==="despacho"?" + "+_pagoMoneda(totalDerechos)+" de derechos":"")+"?"))return;
+    q("#pgGuardar").disabled=true;q("#pgGuardar").textContent="Guardando…";
+    try{
+      const res=await fetch(_syncURL(),{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"registrarPago",cliente:f.cliente,folio:f.folio,fecha,tipo:modo.value,monto:recibido,aplicaciones,derechosEstado,derechosMonto:totalDerechos})});
+      const data=await res.json();if(!data.ok)throw new Error(data.error||"No se pudo registrar");
+      f._pagadoFecha=fecha;f._ultimoPago=data.resumen||{};f._m=_mNuevo();_guardarRegistroLocal();renderFolioList();m.remove();
+      _xlToast("✅ Pago registrado. "+(data.etiqueta||"")+" · "+_pagoMoneda(recibido));
+    }catch(e){q("#pgGuardar").disabled=false;q("#pgGuardar").textContent="CONFIRMAR PAGO";alert("No se pudo registrar el pago: "+e.message);}
+  };
+  modo.dispatchEvent(new Event("change"));
 }
 
 function _marcarPagadoAct(f,fechaPago){
@@ -4307,28 +4407,7 @@ async function _apiAutorizar(idx){
   }catch(e){_xlToast("❌ Sin conexión con Google Sheets. Verifica tu internet y la URL.","#c0392b");}
 }
 
-async function _apiPagado(idx){
-  const u=_syncURL();const f=folioRegistry[idx];
-  if(!u||!f)return;
-  const fechaDefault=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
-  const fecha=prompt("Fecha de pago (DD/MM/AAAA):",fechaDefault);
-  if(!fecha)return;
-  const conceptos=((f.snapshot&&f.snapshot.items)||[]).map(i=>i.n);
-  if(!conceptos.length){_xlToast("⚠️ Este folio no tiene conceptos guardados.","#c0392b");return;}
-  _xlToast("⏳ Marcando pagado en Google Sheets…","#2563a8");
-  try{
-    const res=await fetch(u,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"pagado",cliente:f.cliente,folio:f.folio,conceptos:conceptos,fecha:fecha})});
-    const data=await res.json();
-    if(data.ok){
-      f._pagadoFecha=fecha;f._m=_mNuevo();
-      _guardarRegistroLocal();
-      renderFolioList();
-      _xlToast("✅ "+data.pagados+" concepto(s) marcados como Pagado — "+fecha+". Actividades actualizado.");
-    }else{
-      _xlToast("⚠️ "+(data.error||"No se encontraron los conceptos"),"#d97706");
-    }
-  }catch(e){_xlToast("❌ Sin conexión con Google Sheets","#c0392b");}
-}
+async function _apiPagado(idx){ return abrirModalRegistrarPago(idx); }
 
 async function _apiFacturado(idx){
   const u=_syncURL();const f=folioRegistry[idx];
@@ -4582,6 +4661,7 @@ function verOrdenServicio(idx){
 }
 
 function descargarOrdenPDF(idx){
+  _normalizarDOMUTF8(document.body);
   const f=folioRegistry[idx];
   const paper=document.getElementById("os-paper");
   if(!f||!paper)return;
@@ -4607,6 +4687,7 @@ function descargarOrdenPDF(idx){
 }
 
 function imprimirOrden(idx){
+  _normalizarDOMUTF8(document.body);
   const f=folioRegistry[idx];
   if(!f||!f._orden)return;
   const w=window.open("","_blank");
