@@ -547,7 +547,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
   </div>
   <div class="hdr-r">
     <div class="hbadge">CDMX 2026</div>
-    <div class="hbadge" id="ma-version" style="opacity:.75;" title="Versión del cotizador">v18.9</div>
+    <div class="hbadge" id="ma-version" style="opacity:.75;" title="Versión del cotizador">v19.0</div>
     <div id="sync-pill" data-st="local" title="Toca para hacer un diagnóstico de sincronización" onclick="ejecutarDiagnostico()" style="cursor:pointer;">◌ Solo local</div>
     <div class="hdate">Folio <strong id="folio">COT-2026-001</strong> &nbsp;|&nbsp; <span id="hoy"></span></div>
   </div>
@@ -1369,7 +1369,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v18.9", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v19.0", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -1402,7 +1402,7 @@ async function ejecutarDiagnostico(){
   try{
     const rv = await fetch(SYNC_URL + "?action=version&t=" + Date.now());
     const jv = await rv.json();
-    if(jv && jv.ok && Number(jv.ver) >= 2) rep.push("3) Código del servidor: ✓ actualizado (v" + jv.ver + ")");
+    if(jv && jv.ok && Number(jv.v) >= 33) rep.push("3) Código del servidor: ✓ actualizado (v" + jv.v + ")");
     else rep.push("3) Código del servidor: ✗ VERSIÓN VIEJA → pega el Code.gs nuevo en Apps Script y crea una NUEVA VERSIÓN de la implementación");
   }catch(e){ rep.push("3) Código del servidor: ✗ versión vieja → pega el Code.gs nuevo y crea NUEVA VERSIÓN de la implementación"); }
   // 4) Prueba de fondo: el registro de folios real, ida y vuelta
