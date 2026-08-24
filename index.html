@@ -1613,7 +1613,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v26 / API v41", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v27 / API v41", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -1982,6 +1982,8 @@ function selA(a){
   list.innerHTML="";
   let last=null;
   TAB[a].items.forEach(it=>{
+    const ovr=typeof getOverrideServicio==="function"?getOverrideServicio(it.id):null;
+    if(it._deleted||(ovr&&ovr._deleted))return;
     if(it.s!==last){const g=document.createElement("div");g.className="tg";g.textContent=it.s;list.appendChild(g);last=it.s;}
     const el=document.createElement("div");
     el.className="ti";el.dataset.id=it.id;
@@ -2001,7 +2003,7 @@ function selT(id){
   // Agregar directamente a la cotización al seleccionar
   if(!curA)return;
   const it=TAB[curA].items.find(i=>i.id===curT);
-  if(!it)return;
+  if(!it||it._deleted||(getOverrideServicio(it.id)&&getOverrideServicio(it.id)._deleted))return;
   const dup=items.some(x=>x.id===curT);
   if(dup){
     document.getElementById("dup-warn").style.display="block";
@@ -2013,7 +2015,7 @@ function selT(id){
 function addIt(){
   if(!curT||!curA)return;
   const it=TAB[curA].items.find(i=>i.id===curT);
-  if(!it)return;
+  if(!it||it._deleted||(getOverrideServicio(it.id)&&getOverrideServicio(it.id)._deleted))return;
   // Check duplicate
   const dup=items.some(x=>x.id===curT);
   if(dup){
@@ -2026,7 +2028,7 @@ function addIt(){
 function addItForce(){
   if(!curT||!curA)return;
   const it=TAB[curA].items.find(i=>i.id===curT);
-  if(!it)return;
+  if(!it||it._deleted||(getOverrideServicio(it.id)&&getOverrideServicio(it.id)._deleted))return;
   document.getElementById("dup-warn").style.display="none";
   doAdd(it);
 }
@@ -3886,13 +3888,23 @@ function renderTablaServicios(){
   Object.keys(TAB).forEach(aKey=>{
     const area=TAB[aKey];
     (area.items||[]).forEach(it=>{
-      if(areaFil&&aKey!==areaFil)return;
-      if(q&&!it.n.toLowerCase().includes(q)&&!(it.s||"").toLowerCase().includes(q))return;
-      baseItems.push({...it,aKey,aLabel:area.l,aBadge:area.b});
+      const ovr=getOverrideServicio(it.id);
+      if(it._deleted || (ovr&&ovr._deleted))return;
+      const disp=ovr?{...it,...ovr}:it;
+      const realArea=disp.aKey||aKey;
+      if(areaFil&&realArea!==areaFil)return;
+      if(q&&!String(disp.n||"").toLowerCase().includes(q)&&!String(disp.s||"").toLowerCase().includes(q))return;
+      const meta={
+        giros:{l:"Giros Mercantiles",b:"bg"}, juridico:{l:"Jurídico",b:"bj"},
+        obras:{l:"Obras",b:"bo"}, protcivil:{l:"Protección Civil",b:"bp"},
+        ambiental:{l:"Ambiental",b:"ba"}, custom:{l:"Personalizados",b:"bj"}
+      }[realArea]||{l:area.l,b:area.b};
+      baseItems.push({...it,...disp,aKey:realArea,aLabel:meta.l,aBadge:meta.b});
     });
   });
   // Extra items
   const extF=extras.filter(e=>{
+    if(!e||e._deleted)return false;
     if(areaFil&&e.aKey!==areaFil)return false;
     if(q&&!e.n.toLowerCase().includes(q)&&!(e.s||"").toLowerCase().includes(q))return false;
     return true;
@@ -3916,7 +3928,8 @@ function renderTablaServicios(){
       <td style="padding:7px 10px;font-size:11px;color:#7db8f0;text-align:right;">${mxnF(disp.d||0)}</td>
       <td style="padding:7px 10px;font-size:11px;color:#e8bf72;text-align:right;">${mxnF(disp.h||0)}</td>
       <td style="padding:7px 10px;text-align:center;display:flex;gap:5px;justify-content:center;">
-        <button onclick="editarServicioBase('${it.aKey}','${it.id}')" style="background:rgba(176,125,46,.2);border:1px solid rgba(176,125,46,.3);color:#d4a845;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:10px;">✏️</button>
+        <button onclick="editarServicioBase('${it.aKey}','${it.id}')" title="Editar" style="background:rgba(176,125,46,.2);border:1px solid rgba(176,125,46,.3);color:#d4a845;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:10px;">✏️</button>
+        <button onclick="eliminarServicioBase('${it.aKey}','${it.id}')" title="Eliminar de las opciones" style="background:rgba(220,50,50,.15);border:1px solid rgba(220,50,50,.25);color:#f77;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:10px;">🗑</button>
         ${ovr?`<button onclick="resetServicioBase('${it.id}')" title="Restaurar original" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.4);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:10px;">↩</button>`:""}
       </td>
     </tr>`;
@@ -4070,20 +4083,75 @@ function editarServicioExtra(idx){
   abrirFormServicio({...e,_idx:idx});
 }
 
-function eliminarServicioExtra(idx){
-  if(!confirm("¿Eliminar este servicio personalizado?"))return;
+async function eliminarServicioExtra(idx){
   const extras=getServiciosExtra();
-  const removed=extras.splice(idx,1)[0];
-  setServiciosExtra(extras);
-  // Remove from TAB too if it was injected
-  if(removed&&TAB[removed.aKey]){
-    TAB[removed.aKey].items=TAB[removed.aKey].items.filter(i=>i.id!==removed.id);
+  const removed=extras[idx];
+  if(!removed)return;
+  if(!confirm('¿Eliminar "'+(removed.n||"este servicio")+'"?\n\nDejará de aparecer como opción para todos los usuarios.\nLas cotizaciones antiguas que ya lo contienen NO se modificarán.'))return;
+  if(!SYNC_URL){alert("Se necesita conexión para eliminar un servicio de la base compartida.");return;}
+
+  try{
+    const r=await fetch(SYNC_URL,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"deleteService",id:removed.id,base:false})
+    });
+    const j=await r.json();
+    if(!j||!j.ok)throw new Error((j&&j.error)||"Respuesta inválida");
+
+    if(typeof j.customValue==="string")_lsSet("ma_custom_items",j.customValue);
+    if(typeof j.extrasValue==="string")_lsSet("ma_servicios_extra",j.extrasValue);
+    Object.keys(TAB).forEach(k=>{TAB[k].items=TAB[k].items.filter(i=>i.id!==removed.id);});
+    _pendientes.delete("ma_custom_items");_pendientes.delete("ma_servicios_extra");
+    _guardarPend();_ultimoOk=true;_actualizarPill();
+
+    renderTablaServicios();
+    if(curA&&TAB[curA])selA(curA);
+    mostrarToastCliente("🗑 Servicio eliminado de la base compartida");
+  }catch(e){
+    console.error("eliminarServicioExtra",e);
+    alert("No se pudo eliminar el servicio de la nube. No se borró.");
   }
-  renderTablaServicios();
-  const activeArea=document.querySelector(".ap.on");
-  if(activeArea)selA(activeArea.getAttribute("data-a"));
 }
 
+async function eliminarServicioBase(aKey,id){
+  let it=null;
+  Object.keys(TAB).some(k=>{
+    const x=(TAB[k].items||[]).find(z=>z.id===id);
+    if(x){it=x;return true;}
+    return false;
+  });
+  const ovr=getOverrideServicio(id)||{};
+  const nombre=(ovr.n||it?.n||id);
+  if(!confirm('¿Eliminar "'+nombre+'"?\n\nDejará de aparecer como opción para todos los usuarios.\nLas cotizaciones ya creadas conservarán el concepto.'))return;
+  if(!SYNC_URL){alert("Se necesita conexión para eliminar un servicio de la base compartida.");return;}
+
+  try{
+    const r=await fetch(SYNC_URL,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"deleteService",id:id,base:true})
+    });
+    const j=await r.json();
+    if(!j||!j.ok)throw new Error((j&&j.error)||"Respuesta inválida");
+
+    if(typeof j.overridesValue==="string")_lsSet("ma_overrides_base",j.overridesValue);
+    // Ocultarlo inmediatamente en la sesión actual.
+    Object.keys(TAB).forEach(k=>{
+      const x=(TAB[k].items||[]).find(z=>z.id===id);
+      if(x)x._deleted=true;
+    });
+    _pendientes.delete("ma_overrides_base");
+    _guardarPend();_ultimoOk=true;_actualizarPill();
+
+    renderTablaServicios();
+    if(curA&&TAB[curA])selA(curA);
+    mostrarToastCliente("🗑 Servicio eliminado de las opciones");
+  }catch(e){
+    console.error("eliminarServicioBase",e);
+    alert("No se pudo eliminar el servicio de la nube. No se borró.");
+  }
+}
 
 // ── OVERRIDES DE SERVICIOS BASE ────────────────────────────────
 function getOverridesBase(){
