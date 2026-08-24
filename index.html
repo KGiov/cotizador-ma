@@ -1206,7 +1206,6 @@ giros:{l:"Giros Mercantiles",b:"bg",items:[
 {id:"bi04",s:"Apertura Bajo Impacto",n:"VB Seguridad y Operación 451–1000 m²",d:0,t:28000,h:0,nota:"Comisión Armando $500"},
 {id:"bi05",s:"Apertura Bajo Impacto",n:"VB Seguridad y Operación +1001 m²",d:0,t:0,h:0,v:1,nota:"Cotizar con perito"},
 {id:"bi06",s:"Apertura Bajo Impacto",n:"Oficio de no obligatoriedad (–250 m² / –100 personas)",d:0,t:0,h:5000},
-{id:"bi07",s:"Apertura Bajo Impacto",n:"Medidas básicas de Protección Civil",d:0,t:10500,h:0},
 {id:"bi08",s:"Apertura Bajo Impacto",n:"Enseres en vía pública — B.I. ($2,195/m²)",d:0,t:0,h:10000,nota:"Dtos: $2,195/m²+$228 constancia. Terceros $10k–$15k"},
 {id:"bi09",s:"Apertura Bajo Impacto",n:"Aviso de Salud",d:0,t:0,h:8000},
 {id:"bi10",s:"Apertura Bajo Impacto",n:"Honorarios Profesionales por Apertura",d:0,t:0,h:25000},
@@ -1337,6 +1336,7 @@ obras:{l:"Obras",b:"bo",items:[
 {id:"dc08",s:"Documentos",n:"Certificación de pago",d:114,t:0,h:0,nota:"Art. 248 XI"}
 ]},
 protcivil:{l:"Protección Civil",b:"bp",items:[
+{id:"bi07",s:"Protección Civil",n:"Medidas básicas de Protección Civil",d:0,t:10500,h:0},
 {id:"pcPIPC",s:"Programa Interno PC",n:"Autorización de PIPC",d:0,t:0,h:0,pipcCalc:1,nota:"Calcular según superficie, aforo, actividad y vulnerabilidad"},
 {id:"pc05",s:"Urgente",n:"Implementación URGENTE PIPC",d:0,t:20000,h:0},
 {id:"pc06",s:"Alertamiento Sísmico",n:"Sistema de Alertamiento Sísmico estándar (restaurantes)",d:0,t:20000,h:0},
@@ -1613,7 +1613,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v25 / API v41", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v26 / API v41", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -3867,7 +3867,7 @@ function getServiciosExtra(){
   }catch(e){return[];}
 }
 function setServiciosExtra(arr){
-  localStorage.setItem("ma_servicios_extra",JSON.stringify(arr));
+  _lsSet("ma_servicios_extra",JSON.stringify(arr));
 }
 
 const AREA_LABELS={"giros":"Giros Mercantiles","juridico":"Jurídico","obras":"Obras","protcivil":"Prot. Civil","ambiental":"Ambiental","custom":"Personalizados"};
@@ -3978,67 +3978,90 @@ function cerrarFormServicio(){
   const el=document.getElementById("srvf_base_id");if(el)el.value="";
 }
 
-function guardarFormServicio(){
-  const n=document.getElementById("srvf_n").value.trim();
+async function guardarFormServicio(){
+  const n=_fixTextoUTF8(document.getElementById("srvf_n").value.trim());
   if(!n){alert("El nombre del concepto es obligatorio.");return;}
+  const aKey=document.getElementById("srvf_a").value;
+  const areaMeta={
+    giros:{al:"Giros Mercantiles",ab:"bg"},
+    protcivil:{al:"Protección Civil",ab:"bp"},
+    ambiental:{al:"Ambiental",ab:"ba"},
+    juridico:{al:"Jurídico",ab:"bj"},
+    obras:{al:"Obras",ab:"bo"},
+    custom:{al:"Personalizados",ab:"bj"}
+  }[aKey]||{al:"Personalizados",ab:"bj"};
 
-  // Verificar si es un override de un servicio base (★)
+  const datos={
+    n:n,
+    s:_fixTextoUTF8(document.getElementById("srvf_s").value.trim()||areaMeta.al),
+    t:parseFloat(document.getElementById("srvf_t").value)||0,
+    d:parseFloat(document.getElementById("srvf_d").value)||0,
+    h:parseFloat(document.getElementById("srvf_h").value)||0,
+    nota:_fixTextoUTF8(document.getElementById("srvf_nota").value.trim()),
+    aKey:aKey, al:areaMeta.al, ab:areaMeta.ab, v:false
+  };
+
+  if(!SYNC_URL){alert("Se necesita conexión para guardar cambios en la base compartida.");return;}
+
   const baseIdEl=document.getElementById("srvf_base_id");
   const baseId=baseIdEl?baseIdEl.value.trim():"";
+  const extras=getServiciosExtra();
+  const idxStr=document.getElementById("srvf_idx").value;
+  let service, isBase=false, oldArea="";
+
   if(baseId){
-    // Guardar override del servicio original
-    const ovr=getOverridesBase();
-    ovr[baseId]={
-      n,
-      s:document.getElementById("srvf_s").value.trim(),
-      t:parseFloat(document.getElementById("srvf_t").value)||0,
-      d:parseFloat(document.getElementById("srvf_d").value)||0,
-      h:parseFloat(document.getElementById("srvf_h").value)||0,
-      nota:document.getElementById("srvf_nota").value.trim()
-    };
-    setOverridesBase(ovr);
-    // Actualizar en memoria también
-    const aKey=document.getElementById("srvf_a").value;
-    if(TAB[aKey]){
-      const it=TAB[aKey].items.find(i=>i.id===baseId);
-      if(it){
-        if(!it._orig)it._orig={n:it.n,s:it.s,t:it.t,d:it.d,h:it.h,nota:it.nota};
-        Object.assign(it,ovr[baseId]);
-      }
+    isBase=true;
+    // Encontrar el área real anterior antes de moverlo.
+    Object.keys(TAB).some(k=>{
+      const found=(TAB[k].items||[]).find(i=>i.id===baseId);
+      if(found){oldArea=k;service={...found,...datos,id:baseId};return true;}
+      return false;
+    });
+    service=service||{...datos,id:baseId};
+  }else if(idxStr!==""&&idxStr!==undefined&&idxStr!==null){
+    const idx=parseInt(idxStr);
+    const oldEntry=extras[idx]||{};
+    oldArea=oldEntry.aKey||"";
+    service={...oldEntry,...datos,id:oldEntry.id||("custom_"+Date.now())};
+  }else{
+    service={...datos,id:"custom_"+Date.now()+"_"+Math.random().toString(36).slice(2,6)};
+  }
+
+  try{
+    const r=await fetch(SYNC_URL,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"updateService",service:service,base:isBase})
+    });
+    const j=await r.json();
+    if(!j||!j.ok)throw new Error((j&&j.error)||"Respuesta inválida");
+
+    if(isBase){
+      if(typeof j.overridesValue==="string") _lsSet("ma_overrides_base",j.overridesValue);
+      // Mover también el objeto vivo de TAB al área elegida.
+      Object.keys(TAB).forEach(k=>{TAB[k].items=TAB[k].items.filter(i=>i.id!==service.id);});
+      if(TAB[aKey])TAB[aKey].items.unshift(service);
+      if(baseIdEl)baseIdEl.value="";
+      _pendientes.delete("ma_overrides_base");
+    }else{
+      if(typeof j.customValue==="string")_lsSet("ma_custom_items",j.customValue);
+      if(typeof j.extrasValue==="string")_lsSet("ma_servicios_extra",j.extrasValue);
+      Object.keys(TAB).forEach(k=>{TAB[k].items=TAB[k].items.filter(i=>i.id!==service.id);});
+      if(TAB[aKey])TAB[aKey].items.unshift(service);
+      _pendientes.delete("ma_custom_items");_pendientes.delete("ma_servicios_extra");
     }
-    baseIdEl.value="";
+
+    _guardarPend();_ultimoOk=true;_actualizarPill();
     cerrarFormServicio();
+    const selFil=document.getElementById("__srv_area__");if(selFil)selFil.value="";
     renderTablaServicios();
     const activeArea=document.querySelector(".ap.on");
     if(activeArea)selA(activeArea.getAttribute("data-a"));
-    return;
+    mostrarToastCliente("✅ Servicio actualizado en la base compartida");
+  }catch(e){
+    console.error("guardarFormServicio",e);
+    alert("No se pudo guardar el cambio en la nube. No se aplicó como cambio compartido.");
   }
-
-  const extras=getServiciosExtra();
-  const idxStr=document.getElementById("srvf_idx").value;
-  const aKey=document.getElementById("srvf_a").value;
-  if(idxStr!==""&&idxStr!==undefined&&idxStr!==null){
-    // EDITAR: conservar id original, actualizar area en TAB si cambio
-    const idx=parseInt(idxStr);
-    const oldEntry=extras[idx]||{};
-    const entry={...oldEntry,n,s:document.getElementById("srvf_s").value.trim(),t:parseFloat(document.getElementById("srvf_t").value)||0,d:parseFloat(document.getElementById("srvf_d").value)||0,h:parseFloat(document.getElementById("srvf_h").value)||0,nota:document.getElementById("srvf_nota").value.trim(),aKey,v:false};
-    extras[idx]=entry;
-    if(oldEntry.aKey&&oldEntry.aKey!==aKey&&TAB[oldEntry.aKey]){TAB[oldEntry.aKey].items=TAB[oldEntry.aKey].items.filter(i=>i.id!==entry.id);}
-    if(TAB[aKey]){const pos=TAB[aKey].items.findIndex(i=>i.id===entry.id);if(pos!==-1)TAB[aKey].items[pos]=entry;else TAB[aKey].items.unshift(entry);}
-  } else {
-    // NUEVO servicio
-    const entry={n,s:document.getElementById("srvf_s").value.trim(),t:parseFloat(document.getElementById("srvf_t").value)||0,d:parseFloat(document.getElementById("srvf_d").value)||0,h:parseFloat(document.getElementById("srvf_h").value)||0,nota:document.getElementById("srvf_nota").value.trim(),aKey,id:"custom_"+Date.now()+"_"+Math.random().toString(36).slice(2,6),v:false};
-    extras.unshift(entry);
-    if(TAB[aKey]){TAB[aKey].items.unshift(entry);}
-  }
-  setServiciosExtra(extras);
-  cerrarFormServicio();
-  // Resetear filtro de area para que el item editado siempre sea visible
-  const selFil=document.getElementById("__srv_area__");
-  if(selFil)selFil.value="";
-  renderTablaServicios();
-  const activeArea=document.querySelector(".ap.on");
-  if(activeArea)selA(activeArea.getAttribute("data-a"));
 }
 
 function editarServicioExtra(idx){
@@ -4088,7 +4111,7 @@ function editarServicioBase(aKey,id){
   document.getElementById("srvf_d").value=disp.d||0;
   document.getElementById("srvf_h").value=disp.h||0;
   document.getElementById("srvf_nota").value=disp.nota||"";
-  document.getElementById("srvf_a").value=aKey;
+  document.getElementById("srvf_a").value=disp.aKey||aKey;
   document.getElementById("srvf_idx").value="";
   // Usar campo oculto especial para marcar que es override
   let hidBase=document.getElementById("srvf_base_id");
