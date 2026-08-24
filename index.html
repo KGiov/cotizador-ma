@@ -1613,7 +1613,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v27 / API v41", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v29 / API v41", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -4831,35 +4831,68 @@ async function _nubePing(silent){
   _renderSyncStatus();
 }
 
-async function _apiAutorizar(idx){
-  const u=_syncURL();const f=folioRegistry[idx];
-  if(!u||!f)return;
-  if(!f.snapshot||!f.snapshot.items||!f.snapshot.items.length){
-    _xlToast("⚠️ Este folio no tiene conceptos guardados. Abre la vista previa de la cotización primero.","#c0392b");return;
+async function _apiAutorizar(ref, entryOverride){
+  const u=_syncURL();
+  // Compatibilidad: acepta índice antiguo o folio estable.
+  let folio="";
+  if(typeof ref==="number"){
+    const f0=folioRegistry[ref];
+    folio=f0&&f0.folio?f0.folio:"";
+  }else{
+    folio=String(ref||"");
   }
-  if(f._ecSync && !confirm("Esta cotización ya se escribió en Google Sheets el "+f._ecSync+".\n\nEl sistema no duplicará conceptos ya registrados, pero ¿quieres enviarla de nuevo?")){return;}
-  _xlToast("⏳ Escribiendo en Google Sheets…","#2563a8");
+  const idxActual=folioRegistry.findIndex(x=>x&&x.folio===folio);
+  const f=idxActual>=0?folioRegistry[idxActual]:null;
+  const entry=entryOverride||f;
+  if(!u||!entry)return {ok:false,error:"No se encontró el folio o la conexión"};
+
+  if(!entry.snapshot||!entry.snapshot.items||!entry.snapshot.items.length){
+    const msg="Este folio no tiene conceptos guardados. Abre la vista previa de la cotización primero.";
+    _xlToast("⚠️ "+msg,"#c0392b");
+    return {ok:false,error:msg};
+  }
+
+  _xlToast("⏳ Autorizando y escribiendo en Estados de Cuenta / Actividades…","#2563a8");
   try{
-    const res=await fetch(u,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"autorizar",entry:f})});
+    const res=await fetch(u,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"autorizar",entry:entry})
+    });
     const data=await res.json();
-    if(data.ok){
-      f._ecSync=new Date().toLocaleString("es-MX");
-      f._fpAutorizada=_fpSnapshot(f.snapshot);
-      f._m=_mNuevo();
-      _guardarRegistroLocal();
-      renderFolioList();
-      let _msg="✅ Hoja \""+data.hoja+"\": "+data.filas+" concepto(s) nuevos";
-      if(data.actualizados)_msg+=" · "+data.actualizados+" con importes actualizados";
-      if(data.omitidos)_msg+=" · "+data.omitidos+" sin cambios";
-      if(data.repetidos)_msg+=" · ⚠️ "+data.repetidos+" NO se escribieron porque ese concepto ya está en la hoja del cliente";
-      if(data.indice&&data.indice.indexOf("agregado")>=0)_msg+=" · 📇 agregado al ÍNDICE";
-      _msg+=" · Actividades: "+(data.actividades||"—");
-      if(data.actividades&&data.actividades.indexOf("solo estado de cuenta")>=0)_msg="✅ Hoja \""+data.hoja+"\": "+data.filas+" concepto(s) · ⏸ NO pasó a Actividades (modo: solo estado de cuenta)";
-      _xlToast(_msg);
-    }else{
-      _xlToast("❌ "+(data.error||"Error desconocido"),"#c0392b");
+
+    if(!data.ok){
+      _xlToast("❌ AUTORIZACIÓN NO APLICADA: "+(data.error||"Error desconocido"),"#c0392b");
+      return data;
     }
-  }catch(e){_xlToast("❌ Sin conexión con Google Sheets. Verifica tu internet y la URL.","#c0392b");}
+
+    // Resolver de NUEVO por folio después del await: el registry pudo reordenarse.
+    const idxFin=folioRegistry.findIndex(x=>x&&x.folio===folio);
+    const local=idxFin>=0?folioRegistry[idxFin]:null;
+    if(local){
+      local.status="autorizada";
+      local._ecSync=new Date().toLocaleString("es-MX");
+      local._fpAutorizada=_fpSnapshot(local.snapshot);
+      local._m=_mNuevo();
+      _guardarRegistroLocal();
+    }
+    renderFolioList();
+
+    let msg='✅ "'+(data.hoja||entry.cliente)+'": '+(data.filas||0)+" concepto(s) nuevos";
+    if(data.actualizados)msg+=" · "+data.actualizados+" actualizados";
+    if(data.omitidos)msg+=" · "+data.omitidos+" sin cambios";
+    if(data.indice&&String(data.indice).indexOf("agregado")>=0)msg+=" · 📇 agregado al ÍNDICE";
+    msg+=" · Actividades: "+(data.actividades||"—");
+    if(data.actividades&&String(data.actividades).indexOf("solo estado de cuenta")>=0){
+      msg='✅ "'+(data.hoja||entry.cliente)+'": '+(data.filas||0)+' concepto(s) · ⏸ modo "solo estado de cuenta"';
+    }
+    _xlToast(msg);
+    return data;
+  }catch(e){
+    const msg="Sin conexión con Google Sheets: "+(e&&e.message?e.message:e);
+    _xlToast("❌ "+msg,"#c0392b");
+    return {ok:false,error:msg};
+  }
 }
 
 async function _apiPagado(idx){ return abrirModalRegistrarPago(idx); }
@@ -4915,6 +4948,7 @@ function abrirModalAutorizacion(idx){
   if(modal)modal.remove();
   modal=document.createElement("div");
   modal.id="modal-aut";
+  modal.dataset.folio=f.folio||"";
 
   const conceptosHtml=s.items.map((it,i)=>{
     let checked=true;
@@ -4950,7 +4984,7 @@ function abrirModalAutorizacion(idx){
     '<div class="maut-conc"><div class="maut-conc-h">Conceptos autorizados — palomita = se transcribe, sin palomita = NO se transcribe</div>'+conceptosHtml+'</div>'+
     '<div class="maut-acts">'+
     '<button class="maut-no" onclick="cerrarModalAut()">Cancelar</button>'+
-    '<button class="maut-ok" onclick="confirmarAutorizacion('+idx+')">✓ Autorizar y generar Orden de Servicio</button>'+
+    '<button class="maut-ok" id="maut-confirm-btn" onclick="confirmarAutorizacion()">✓ Autorizar y generar Orden de Servicio</button>'+
     '</div></div>';
 
   document.body.appendChild(modal);
@@ -4964,11 +4998,23 @@ function cerrarModalAut(){
   renderFolioList();
 }
 
-function confirmarAutorizacion(idx){
-  const f=folioRegistry[idx];
-  if(!f)return;
+async function confirmarAutorizacion(){
+  const modal=document.getElementById("modal-aut");
+  const folio=modal?String(modal.dataset.folio||""):"";
+  const idx=folioRegistry.findIndex(x=>x&&x.folio===folio);
+  const f=idx>=0?folioRegistry[idx]:null;
+
+  if(!f){
+    alert("No pude localizar esta cotización por folio. Cierra el cuadro y vuelve a abrir Autorizar.");
+    return;
+  }
+  if(!f.snapshot||!Array.isArray(f.snapshot.items)){
+    alert("La cotización no tiene conceptos guardados.");
+    return;
+  }
+
   const s=f.snapshot;
-  const g=id=>{const el=document.getElementById(id);return el?el.value.trim():"";};
+  const val=id=>{const el=document.getElementById(id);return el?el.value.trim():"";};
   const igualaFija=!!s.esIguala;
   const chkIg=document.getElementById("ma-iguala");
   const clasificacion=igualaFija?"IGUALA":(chkIg&&chkIg.checked?"IGUALA":"EXTERNO");
@@ -4985,22 +5031,36 @@ function confirmarAutorizacion(idx){
       if(ok)algunoAut=true;
     }
   });
-  if(!algunoAut){alert("Ningún concepto tiene palomita. Marca al menos uno o cancela.");return;}
-  const asuntoVal=g("ma-asunto");
+  if(!algunoAut){
+    alert("Ningún concepto tiene palomita. Marca al menos uno o cancela.");
+    return;
+  }
+
+  const asuntoVal=val("ma-asunto");
   if(!asuntoVal){
     const el=document.getElementById("ma-asunto");
     if(el){el.style.borderColor="#c0392b";el.style.background="#fdf2f1";el.focus();}
-    alert("Escribe el NOMBRE DEL ASUNTO (ej. CAPACITACIÓN, APERTURA, REGULARIZACIÓN…).\n\nAsí se agrupará en el estado de cuenta del cliente.");
+    alert("Escribe el NOMBRE DEL ASUNTO.\n\nAsí se agrupará en el estado de cuenta del cliente.");
     return;
   }
 
   const modoEl=document.querySelector('#modal-aut input[name="ma-modo"]:checked');
   const modo=modoEl?modoEl.value:"promesa";
-  const antMonto=modo==="anticipo"?(parseFloat((document.getElementById("ma-anticipo-monto")||{value:""}).value.replace(/[^0-9.]/g,""))||0):0;
+  const antMonto=modo==="anticipo"
+    ?(parseFloat((document.getElementById("ma-anticipo-monto")||{value:""}).value.replace(/[^0-9.]/g,""))||0)
+    :0;
+
+  if(modo==="anticipo" && antMonto<=0){
+    alert("Elegiste ANTICIPO pero no capturaste un monto válido.");
+    return;
+  }
+
+  // Guardamos los datos de la orden localmente, PERO todavía no marcamos autorizada.
+  // Así, si Sheets falla, el folio no queda mintiendo como autorizado.
   f._orden={
-    asunto:g("ma-asunto"),
-    giro:g("ma-giro"),superficie:g("ma-m2"),contacto:g("ma-contacto"),
-    celular:g("ma-cel"),ubicacion:g("ma-ubi"),aforo:g("ma-aforo"),
+    asunto:asuntoVal,
+    giro:val("ma-giro"),superficie:val("ma-m2"),contacto:val("ma-contacto"),
+    celular:val("ma-cel"),ubicacion:val("ma-ubi"),aforo:val("ma-aforo"),
     clasificacion:clasificacion,autorizados:autorizados,modo:modo,anticipoMonto:antMonto||"",
     fecha:new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"})
   };
@@ -5008,14 +5068,48 @@ function confirmarAutorizacion(idx){
   f.asuntoOrden=asuntoVal;
   f._modoTrans=modo;
   f._anticipoMonto=antMonto;
-  f.status="autorizada";
-  f._fpAutorizada=_fpSnapshot(f.snapshot);
-  f._m=_mNuevo();
-  _guardarRegistroLocal();
+
+  const btn=document.getElementById("maut-confirm-btn");
+  if(btn){btn.disabled=true;btn.textContent="⏳ Autorizando…";}
+
+  // El servidor recibe una COPIA marcada como autorizada.
+  // El objeto local solo cambiará de status si el servidor devuelve ok:true.
+  const entryServidor=JSON.parse(JSON.stringify(f));
+  entryServidor.status="autorizada";
+  entryServidor._fpAutorizada=_fpSnapshot(entryServidor.snapshot);
+  entryServidor._m=_mNuevo();
+
+  const data=await _apiAutorizar(folio,entryServidor);
+
+  if(!data||!data.ok){
+    f.status="pendiente";
+    f._m=_mNuevo();
+    _guardarRegistroLocal();
+    renderFolioList();
+    if(btn){btn.disabled=false;btn.textContent="✓ Autorizar y generar Orden de Servicio";}
+    return;
+  }
+
+  // Copiar metadatos definitivos del intento exitoso.
+  const idxFin=folioRegistry.findIndex(x=>x&&x.folio===folio);
+  const fFin=idxFin>=0?folioRegistry[idxFin]:null;
+  if(fFin){
+    fFin._orden=entryServidor._orden;
+    fFin.clasificacion=entryServidor.clasificacion;
+    fFin.asuntoOrden=entryServidor.asuntoOrden;
+    fFin._modoTrans=entryServidor._modoTrans;
+    fFin._anticipoMonto=entryServidor._anticipoMonto;
+    fFin.status="autorizada";
+    fFin._fpAutorizada=_fpSnapshot(fFin.snapshot);
+    fFin._m=_mNuevo();
+    _guardarRegistroLocal();
+  }
+
   cerrarModalAut();
   renderFolioList();
-  _apiAutorizar(idx);
-  setTimeout(()=>verOrdenServicio(idx),400);
+
+  const idxOrden=folioRegistry.findIndex(x=>x&&x.folio===folio);
+  if(idxOrden>=0)setTimeout(()=>verOrdenServicio(idxOrden),250);
 }
 
 function _nombreOrden(f){
