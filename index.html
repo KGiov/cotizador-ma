@@ -529,6 +529,38 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
 .fb-observacion{background:#f3f4f6;color:#374151;}
 .fb-archivado{background:#f3f4f6;color:#6b7280;}
 @media(max-width:768px){/* Botones de los modales SIEMPRE visibles (barra fija al pie del cuadro) */#modal-aut .maut-card,#modal-pc .maut-card{padding-bottom:0!important;display:flex;flex-direction:column;}#modal-aut .maut-card>*:not(.maut-acts),#modal-pc .maut-card>*:not(.maut-acts){flex-shrink:0;}.maut-acts{position:sticky;bottom:0;background:#fff;margin:8px -22px 0;padding:12px 22px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -6px 16px rgba(0,0,0,.10);border-top:1px solid #eef0f4;z-index:5;}}
+
+/* ── v18: experiencia táctil fluida en móvil y tableta ───────────── */
+@media screen and (max-width:1024px){
+  html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-y:auto;touch-action:pan-y;}
+  body{-webkit-text-size-adjust:100%;}
+  .app,.main,.sb,.doc,#mob-folios{min-width:0!important;max-width:100%!important;}
+  .main{overflow-x:hidden!important;}
+  .doc{box-sizing:border-box;overflow-x:auto!important;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;}
+  #preview-overlay{overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;}
+  #preview-overlay.open{height:100dvh;max-height:100dvh;}
+  #preview-overlay .pv-paper{box-sizing:border-box!important;width:100%!important;max-width:100vw!important;min-width:0!important;margin:0 auto!important;padding:18px 14px!important;overflow:hidden!important;}
+  #preview-overlay .pv-paper *{max-width:100%;box-sizing:border-box;}
+  #preview-overlay .editable{touch-action:pan-y;overflow-wrap:anywhere;word-break:break-word;}
+  #preview-overlay .pv-table{width:100%!important;table-layout:fixed!important;font-size:9px!important;}
+  #preview-overlay .pv-table th,#preview-overlay .pv-table td{overflow-wrap:anywhere;word-break:break-word;padding:5px 3px!important;}
+  #preview-overlay img,#preview-overlay iframe{max-width:100%!important;}
+  #preview-overlay .pv-toolbar{position:sticky!important;top:0;z-index:100;background:#171b25;padding-top:calc(8px + env(safe-area-inset-top));}
+  #preview-overlay .pv-toolbar>div{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  #preview-overlay .pv-toolbar>div::-webkit-scrollbar{display:none;}
+  textarea,input,select,button{touch-action:manipulation;}
+  .folio-row,.cc-grid,.tots,.tots-pv{min-width:0;}
+  .folio-row>*{min-width:0;overflow-wrap:anywhere;}
+  #map-iframe{width:100%!important;}
+}
+@media screen and (max-width:600px){
+  #preview-overlay .pv-paper{padding:12px 8px!important;}
+  #preview-overlay .pv-table{font-size:8px!important;}
+  #preview-overlay .pv-toolbar .btn-g,#preview-overlay .pv-toolbar .btn-p,#preview-overlay .pv-mode-btn{flex:0 0 auto;}
+  .acts{overflow-x:auto;justify-content:flex-start!important;-webkit-overflow-scrolling:touch;}
+  .acts>*{flex:0 0 auto;}
+}
+
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -909,7 +941,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
         <button class="pv-mode-btn" id="btn-view-mode" onclick="setMode('view')">👁 Vista limpia</button>
       </div>
       <button class="btn-g" onclick="cerrarVista()" style="color:#fff;border-color:rgba(255,255,255,.2);font-size:10px;">← Volver</button>
-      <button class="btn-g" onclick="guardarPDFEnFolio()" style="color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.2);font-size:10px;display:flex;align-items:center;gap:5px;">
+      <button id="btn-guardar-folio" class="btn-g" onclick="guardarPDFEnFolio()" style="color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.2);font-size:10px;display:flex;align-items:center;gap:5px;">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         Guardar PDF
       </button>
@@ -1510,7 +1542,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v16 / API v37", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v18 / API v39", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -1677,22 +1709,31 @@ let curA=null,curT=null,items=[],editMode=true;
 
 // ── FOLIO: se asigna SOLO al guardar en la nube ─────────────────
 let currentFolio=null;
+let _folioAsignacionPromise=null;
 function _folioTexto(){ return currentFolio || "SIN FOLIO — se asigna al guardar"; }
 async function _asegurarFolioGuardado(){
   if(currentFolio) return currentFolio;
+  // Blindaje contra doble toque/clic: mientras un folio se está solicitando,
+  // todos los guardados esperan LA MISMA promesa y reciben el mismo folio.
+  if(_folioAsignacionPromise) return _folioAsignacionPromise;
   if(!SYNC_URL) throw new Error("Se necesita conexión para asignar un folio");
-  const year=new Date().getFullYear();
-  const r=await fetch(SYNC_URL,{
-    method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body:JSON.stringify({action:"nextFolio",year:year})
-  });
-  const j=await r.json();
-  if(!j||!j.ok||!j.folio) throw new Error((j&&j.error)||"No se pudo asignar folio");
-  currentFolio=j.folio;
-  _lsSet(`ma_folio_${year}`,String(j.numero||0));
-  const el=document.getElementById("folio"); if(el) el.textContent=currentFolio;
-  const pv=document.getElementById("pv-folio"); if(pv) pv.textContent="Folio: "+currentFolio+" | "+new Date().toLocaleDateString("es-MX");
-  return currentFolio;
+  _folioAsignacionPromise=(async()=>{
+    const year=new Date().getFullYear();
+    const r=await fetch(SYNC_URL,{
+      method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"nextFolio",year:year})
+    });
+    const j=await r.json();
+    if(!j||!j.ok||!j.folio) throw new Error((j&&j.error)||"No se pudo asignar folio");
+    // Otro flujo pudo restaurar un folio mientras esperaba la red; si ya existe, conservarlo.
+    if(!currentFolio) currentFolio=j.folio;
+    _lsSet(`ma_folio_${year}`,String(j.numero||0));
+    const el=document.getElementById("folio"); if(el) el.textContent=currentFolio;
+    const pv=document.getElementById("pv-folio"); if(pv) pv.textContent="Folio: "+currentFolio+" | "+new Date().toLocaleDateString("es-MX");
+    return currentFolio;
+  })();
+  try{return await _folioAsignacionPromise;}
+  finally{_folioAsignacionPromise=null;}
 }
 
 // ── INIT ───────────────────────────────────────────────────────
@@ -2117,7 +2158,8 @@ function abrirVista(){
   if(_sp)_sp.classList.add("pv-flotante");
   document.getElementById("preview-overlay").classList.add("open");
   document.body.style.overflow="hidden";
-  setMode("edit");
+  // En móvil/tableta abrir en modo lectura evita que contentEditable capture los gestos de scroll.
+  setMode(window.matchMedia("(pointer:coarse)").matches || window.innerWidth<=1024 ? "view" : "edit");
   // Vista previa no consume folio. El folio se asigna únicamente al guardar.
 }
 
@@ -3103,7 +3145,7 @@ function cargarOrden(idx){
   buildPreview();
   document.getElementById("preview-overlay").classList.add("open");
   document.body.style.overflow="hidden";
-  setMode("edit");
+  setMode(window.matchMedia("(pointer:coarse)").matches || window.innerWidth<=1024 ? "view" : "edit");
   if(window.innerWidth<=768)showMobileTab("doc");
 }
 
@@ -5009,4 +5051,28 @@ function _marcarTocado(folio){if(folio)window._foliosTocados[folio]=Date.now();}
   });
 })();
 
+
+
+// ── v18: Guardar es idempotente mientras la petición está en curso ─────
+(function(){
+  const original=window.guardarPDFEnFolio;
+  if(typeof original!=="function")return;
+  let guardando=false;
+  window.guardarPDFEnFolio=async function(){
+    if(guardando){
+      if(typeof _xlToast==="function")_xlToast("⏳ Ya se está guardando esta cotización…","#2563a8");
+      return;
+    }
+    guardando=true;
+    const btn=document.getElementById("btn-guardar-folio");
+    const texto=btn?btn.innerHTML:"";
+    if(btn){btn.disabled=true;btn.style.opacity=".6";btn.innerHTML="Guardando…";}
+    try{
+      return await original.apply(this,arguments);
+    }finally{
+      guardando=false;
+      if(btn){btn.disabled=false;btn.style.opacity="";btn.innerHTML=texto;}
+    }
+  };
+})();
 </script>
