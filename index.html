@@ -1616,7 +1616,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v23 / API v39", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v24 / API v41", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -2883,48 +2883,43 @@ function addCustomItem(){
   clearCustomForm();
 }
 
-function saveCustomToBase(){
+async function saveCustomToBase(){
   const name=document.getElementById("custom-name").value.trim();
   const sub=document.getElementById("custom-sub").value.trim();
   const nota=document.getElementById("custom-nota").value.trim();
   const warn=document.getElementById("custom-warn");
-
   if(!name || !ctypeActive.size){
-    warn.style.display="block";
-    setTimeout(()=>warn.style.display="none",3000);
-    return;
+    warn.style.display="block";setTimeout(()=>warn.style.display="none",3000);return;
   }
   warn.style.display="none";
-
   const tVal=ctypeActive.has("t")?parseFloat(document.getElementById("custom-amount-t")?.value||0)||0:0;
   const dVal=ctypeActive.has("d")?parseFloat(document.getElementById("custom-amount-d")?.value||0)||0:0;
   const hVal=ctypeActive.has("h")?parseFloat(document.getElementById("custom-amount-h")?.value||0)||0:0;
-
   const area=getCustomArea();
-  const stored=JSON.parse(localStorage.getItem("ma_custom_items")||"[]");
   const newItem={
     id:"c_saved_"+Date.now(),
-    s: sub||area.al,
-    n: name,d:dVal,t:tVal,h:hVal,
-    v:(tVal===0&&dVal===0&&hVal===0),
-    nota,
-    al:area.al,
-    ab:area.ab,
-    aKey:area.aKey
+    s:_fixTextoUTF8(sub||area.al),
+    n:_fixTextoUTF8(name),d:dVal,t:tVal,h:hVal,
+    v:(tVal===0&&dVal===0&&hVal===0),nota:_fixTextoUTF8(nota),
+    al:area.al,ab:area.ab,aKey:area.aKey
   };
-  stored.push(newItem);
-  localStorage.setItem("ma_custom_items", JSON.stringify(stored));
-  if(!TAB[area.aKey]) TAB[area.aKey]={l:area.al,b:area.ab,items:[]};
-  TAB[area.aKey].items.push(newItem);
-  // Sync to servicios_extra for el editor, conservando el área seleccionada
-  const srvExtras=getServiciosExtra();
-  srvExtras.unshift({...newItem,aKey:area.aKey});
-  setServiciosExtra(srvExtras);
-  const msg=document.getElementById("custom-saved-msg");
-  msg.style.display="block";
-  setTimeout(()=>msg.style.display="none",3000);
+  if(!SYNC_URL){alert("Se necesita conexión para guardar el servicio en la base compartida.");return;}
+  try{
+    const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"addService",service:newItem})});
+    const j=await r.json();
+    if(!j||!j.ok||typeof j.customValue!=="string"||typeof j.extrasValue!=="string")throw new Error((j&&j.error)||"Respuesta inválida");
+    _lsSet("ma_custom_items",j.customValue);_lsSet("ma_servicios_extra",j.extrasValue);
+    _pendientes.delete("ma_custom_items");_pendientes.delete("ma_servicios_extra");_guardarPend();
+    if(!TAB[area.aKey])TAB[area.aKey]={l:area.al,b:area.ab,items:[]};
+    if(!TAB[area.aKey].items.some(x=>x&&x.id===newItem.id))TAB[area.aKey].items.push(newItem);
+    _ultimoOk=true;_actualizarPill();
+    const msg=document.getElementById("custom-saved-msg");msg.style.display="block";setTimeout(()=>msg.style.display="none",3000);
+  }catch(e){
+    console.error("saveCustomToBase",e);
+    alert("No se pudo guardar el servicio en la nube. No se modificó la base compartida; intenta nuevamente.");
+    return;
+  }
 }
-
 function clearCustomForm(){
   document.getElementById("custom-name").value="";
   const areaSel=document.getElementById("custom-area");
@@ -3519,25 +3514,36 @@ function checkBtnGuardarCliente(){
 }
 
 // Guardar datos actuales del formulario como cliente nuevo en localStorage
-function guardarClienteNuevoEnBD(){
+async function guardarClienteNuevoEnBD(){
   const n=document.getElementById("c1").value.trim().toUpperCase();
   if(!n){alert("El Nombre Comercial es obligatorio.");return;}
   const todos=getClientesAll();
   if(todos.some(c=>c.n===n)){
     if(!confirm("Ya existe un cliente con el nombre \""+n+"\".\n¿Guardar de todas formas?"))return;
   }
-  const extras=getClientesExtra();
-  extras.push({
+  const cliente={
+    _id:"cli_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),
     n,
-    d:document.getElementById("c2").value.trim(),
-    g:document.getElementById("c3").value.trim(),
-    c:document.getElementById("c4").value.trim(),
+    d:_fixTextoUTF8(document.getElementById("c2").value.trim()),
+    g:_fixTextoUTF8(document.getElementById("c3").value.trim()),
+    c:_fixTextoUTF8(document.getElementById("c4").value.trim()),
     t:document.getElementById("c5").value.trim(),
     e:document.getElementById("c6").value.trim()
-  });
-  localStorage.setItem("MA_clientes_extra",JSON.stringify(extras));
-  document.getElementById("wrap-guardar-cliente").style.display="none";
-  mostrarToastCliente("✅ Cliente guardado: "+n);
+  };
+  if(!SYNC_URL){alert("Se necesita conexión para guardar el cliente en la base compartida.");return;}
+  try{
+    mostrarToastCliente("⟳ Guardando cliente en la nube…");
+    const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"addClient",client:cliente})});
+    const j=await r.json();
+    if(!j||!j.ok||typeof j.value!=="string")throw new Error((j&&j.error)||"Respuesta inválida");
+    _lsSet("MA_clientes_extra",j.value);
+    _pendientes.delete("MA_clientes_extra");_guardarPend();_ultimoOk=true;_actualizarPill();
+    document.getElementById("wrap-guardar-cliente").style.display="none";
+    mostrarToastCliente("✅ Cliente guardado y compartido: "+n);
+  }catch(e){
+    console.error("guardarClienteNuevoEnBD",e);
+    mostrarToastCliente("❌ No se guardó en la nube. Intenta nuevamente.");
+  }
 }
 
 function mostrarToastCliente(msg){
