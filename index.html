@@ -579,7 +579,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
   </div>
   <div class="hdr-r">
     <div class="hbadge">CDMX 2026</div>
-    <div class="hbadge" id="ma-version" style="opacity:.75;" title="Versión del cotizador">v19.0</div>
+    <div class="hbadge" id="ma-version" style="opacity:.75;" title="Versión del cotizador">v28</div>
     <div id="sync-pill" data-st="local" title="Toca para hacer un diagnóstico de sincronización" onclick="ejecutarDiagnostico()" style="cursor:pointer;">◌ Solo local</div>
     <div class="hdate">Folio <strong id="folio">COT-2026-001</strong> &nbsp;|&nbsp; <span id="hoy"></span></div>
   </div>
@@ -1613,7 +1613,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v29 / API v41", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v28 / API v41", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -4601,53 +4601,59 @@ function actualizarAct(folioIdx){
   const items=(f.snapshot&&f.snapshot.items)||[];
   const areas=f.areas||[];
   const norm=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+  const listaNatural=arr=>{
+    const out=[],seen=new Set();
+    arr.forEach(v=>{const t=String(v||"").trim(),k=norm(t);if(t&&!seen.has(k)){seen.add(k);out.push(t);}});
+    if(out.length<=1)return out[0]||"";
+    if(out.length===2)return out[0]+" y "+out[1];
+    return out.slice(0,-1).join(", ")+" y "+out[out.length-1];
+  };
   const done=new Set();
   areas.forEach(area=>{
-    if(done.has(area))return;
-    done.add(area);
+    if(done.has(area))return;done.add(area);
     const sheetName=_actWB.SheetNames.find(n=>norm(n)===norm(area));
     if(!sheetName){_xlToast("⚠️ Sin hoja para área: "+area,"#d97706");return;}
     const ws=_actWB.Sheets[sheetName];
-    const ref=ws["!ref"]||"A1:N1";
-    const range=XLSX.utils.decode_range(ref);
-    let emptyRow=1;
-    for(let r=1;r<=range.e.r+1;r++){
-      const c=ws[XLSX.utils.encode_cell({r,c:1})];
-      if(!c||!c.v){emptyRow=r;break;}
-      emptyRow=r+1;
-    }
-    const aItems=items.filter(i=>i.al===area);
-    const totalHon=aItems.reduce((s,i)=>s+(i.h||0),0);
-    const totalTerc=aItems.reduce((s,i)=>s+(i.t||0),0);
-    const totalDtos=aItems.reduce((s,i)=>s+(i.d||0),0);
+    const ref=ws["!ref"]||"A1:N1";const range=XLSX.utils.decode_range(ref);
+    const aItems=items.filter(i=>norm(i.al)===norm(area));
+    const totalHon=aItems.reduce((s,i)=>s+(i.h||0),0),totalTerc=aItems.reduce((s,i)=>s+(i.t||0),0),totalDtos=aItems.reduce((s,i)=>s+(i.d||0),0);
     const totalAll=totalHon+totalTerc+totalDtos;
-    const servStr=aItems.length?aItems.map(i=>i.n).join(" / "):(f.asunto||"");
     const tipo=(f.snapshot&&f.snapshot.esNuevo)?"EXTERNO":"IGUALA";
     const today=new Date();
+
+    // Ambiental: una fila por establecimiento; si ya existe, añadir/actualizar conceptos.
+    if(norm(area)===norm("Ambiental")){
+      let filaExist=-1,emptyRow=1;
+      for(let r=1;r<=range.e.r+1;r++){
+        const c=ws[XLSX.utils.encode_cell({r,c:1})];
+        const estab=String(c&&c.v||"").trim();
+        if(norm(estab)===norm(f.cliente||"")){filaExist=r;break;}
+        if((!c||!c.v)&&emptyRow===1)emptyRow=r;
+      }
+      const r=filaExist>=0?filaExist:emptyRow;
+      let nombres=aItems.map(i=>i.n);
+      if(filaExist>=0){
+        const c=ws[XLSX.utils.encode_cell({r,c:2})];
+        const previo=String(c&&c.v||"").trim();
+        if(previo)nombres.unshift(previo);
+      }
+      const servStr=listaNatural(nombres);
+      _setCell(ws,r,0,"s",tipo);_setCell(ws,r,1,"s",f.cliente||"");_setCell(ws,r,2,"s",servStr);
+      if(filaExist<0){_setCell(ws,r,3,"n",totalAll);_setCell(ws,r,4,"s","EN PROCESO");_setCell(ws,r,5,"s","");_setCell(ws,r,6,"d",today);_setCell(ws,r,7,"n",0);_setCell(ws,r,8,"n",totalTerc);_setCell(ws,r,9,"n",totalDtos);_setCell(ws,r,12,"n",totalAll);_setCell(ws,r,13,"s","");}
+      _expandRange(ws,r,13);
+      _xlToast("✅ Ambiental actualizado: "+f.cliente);
+      return;
+    }
+
+    let emptyRow=1;
+    for(let r=1;r<=range.e.r+1;r++){const c=ws[XLSX.utils.encode_cell({r,c:1})];if(!c||!c.v){emptyRow=r;break;}emptyRow=r+1;}
+    const servStr=aItems.length?aItems.map(i=>i.n).join(" / "):(f.asunto||"");
     const r=emptyRow;
-    _setCell(ws,r,0,"s",tipo);
-    _setCell(ws,r,1,"s",f.cliente||"");
-    _setCell(ws,r,2,"s",servStr);
-    _setCell(ws,r,3,"n",totalAll);
-    _setCell(ws,r,4,"s","EN PROCESO");
-    _setCell(ws,r,5,"s","");
-    _setCell(ws,r,6,"d",today);
-    _setCell(ws,r,7,"n",0);
-    _setCell(ws,r,8,"n",totalTerc);
-    _setCell(ws,r,9,"n",totalDtos);
-    _setCell(ws,r,12,"n",totalAll);
-    _setCell(ws,r,13,"s","");
-    _expandRange(ws,r,13);
+    _setCell(ws,r,0,"s",tipo);_setCell(ws,r,1,"s",f.cliente||"");_setCell(ws,r,2,"s",servStr);_setCell(ws,r,3,"n",totalAll);_setCell(ws,r,4,"s","EN PROCESO");_setCell(ws,r,5,"s","");_setCell(ws,r,6,"d",today);_setCell(ws,r,7,"n",0);_setCell(ws,r,8,"n",totalTerc);_setCell(ws,r,9,"n",totalDtos);_setCell(ws,r,12,"n",totalAll);_setCell(ws,r,13,"s","");_expandRange(ws,r,13);
     _xlToast("✅ Actividad en hoja: "+sheetName);
   });
-  f._actSync=new Date().toLocaleString("es-MX");
-  f._m=_mNuevo();
-  _guardarRegistroLocal();
-  _actDirty=true;
-  _renderExcelPanel();
-  renderFolioList();
+  f._actSync=new Date().toLocaleString("es-MX");f._m=_mNuevo();_guardarRegistroLocal();_actDirty=true;_renderExcelPanel();renderFolioList();
 }
-
 /* ── ACTUALIZAR AMBOS ── */
 function actualizarAmbos(folioIdx){
   if(typeof _syncURL==="function" && _syncURL()){_apiAutorizar(folioIdx);return;}
@@ -4831,68 +4837,35 @@ async function _nubePing(silent){
   _renderSyncStatus();
 }
 
-async function _apiAutorizar(ref, entryOverride){
-  const u=_syncURL();
-  // Compatibilidad: acepta índice antiguo o folio estable.
-  let folio="";
-  if(typeof ref==="number"){
-    const f0=folioRegistry[ref];
-    folio=f0&&f0.folio?f0.folio:"";
-  }else{
-    folio=String(ref||"");
+async function _apiAutorizar(idx){
+  const u=_syncURL();const f=folioRegistry[idx];
+  if(!u||!f)return;
+  if(!f.snapshot||!f.snapshot.items||!f.snapshot.items.length){
+    _xlToast("⚠️ Este folio no tiene conceptos guardados. Abre la vista previa de la cotización primero.","#c0392b");return;
   }
-  const idxActual=folioRegistry.findIndex(x=>x&&x.folio===folio);
-  const f=idxActual>=0?folioRegistry[idxActual]:null;
-  const entry=entryOverride||f;
-  if(!u||!entry)return {ok:false,error:"No se encontró el folio o la conexión"};
-
-  if(!entry.snapshot||!entry.snapshot.items||!entry.snapshot.items.length){
-    const msg="Este folio no tiene conceptos guardados. Abre la vista previa de la cotización primero.";
-    _xlToast("⚠️ "+msg,"#c0392b");
-    return {ok:false,error:msg};
-  }
-
-  _xlToast("⏳ Autorizando y escribiendo en Estados de Cuenta / Actividades…","#2563a8");
+  if(f._ecSync && !confirm("Esta cotización ya se escribió en Google Sheets el "+f._ecSync+".\n\nEl sistema no duplicará conceptos ya registrados, pero ¿quieres enviarla de nuevo?")){return;}
+  _xlToast("⏳ Escribiendo en Google Sheets…","#2563a8");
   try{
-    const res=await fetch(u,{
-      method:"POST",
-      headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify({action:"autorizar",entry:entry})
-    });
+    const res=await fetch(u,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"autorizar",entry:f})});
     const data=await res.json();
-
-    if(!data.ok){
-      _xlToast("❌ AUTORIZACIÓN NO APLICADA: "+(data.error||"Error desconocido"),"#c0392b");
-      return data;
-    }
-
-    // Resolver de NUEVO por folio después del await: el registry pudo reordenarse.
-    const idxFin=folioRegistry.findIndex(x=>x&&x.folio===folio);
-    const local=idxFin>=0?folioRegistry[idxFin]:null;
-    if(local){
-      local.status="autorizada";
-      local._ecSync=new Date().toLocaleString("es-MX");
-      local._fpAutorizada=_fpSnapshot(local.snapshot);
-      local._m=_mNuevo();
+    if(data.ok){
+      f._ecSync=new Date().toLocaleString("es-MX");
+      f._fpAutorizada=_fpSnapshot(f.snapshot);
+      f._m=_mNuevo();
       _guardarRegistroLocal();
+      renderFolioList();
+      let _msg="✅ Hoja \""+data.hoja+"\": "+data.filas+" concepto(s) nuevos";
+      if(data.actualizados)_msg+=" · "+data.actualizados+" con importes actualizados";
+      if(data.omitidos)_msg+=" · "+data.omitidos+" sin cambios";
+      if(data.repetidos)_msg+=" · ⚠️ "+data.repetidos+" NO se escribieron porque ese concepto ya está en la hoja del cliente";
+      if(data.indice&&data.indice.indexOf("agregado")>=0)_msg+=" · 📇 agregado al ÍNDICE";
+      _msg+=" · Actividades: "+(data.actividades||"—");
+      if(data.actividades&&data.actividades.indexOf("solo estado de cuenta")>=0)_msg="✅ Hoja \""+data.hoja+"\": "+data.filas+" concepto(s) · ⏸ NO pasó a Actividades (modo: solo estado de cuenta)";
+      _xlToast(_msg);
+    }else{
+      _xlToast("❌ "+(data.error||"Error desconocido"),"#c0392b");
     }
-    renderFolioList();
-
-    let msg='✅ "'+(data.hoja||entry.cliente)+'": '+(data.filas||0)+" concepto(s) nuevos";
-    if(data.actualizados)msg+=" · "+data.actualizados+" actualizados";
-    if(data.omitidos)msg+=" · "+data.omitidos+" sin cambios";
-    if(data.indice&&String(data.indice).indexOf("agregado")>=0)msg+=" · 📇 agregado al ÍNDICE";
-    msg+=" · Actividades: "+(data.actividades||"—");
-    if(data.actividades&&String(data.actividades).indexOf("solo estado de cuenta")>=0){
-      msg='✅ "'+(data.hoja||entry.cliente)+'": '+(data.filas||0)+' concepto(s) · ⏸ modo "solo estado de cuenta"';
-    }
-    _xlToast(msg);
-    return data;
-  }catch(e){
-    const msg="Sin conexión con Google Sheets: "+(e&&e.message?e.message:e);
-    _xlToast("❌ "+msg,"#c0392b");
-    return {ok:false,error:msg};
-  }
+  }catch(e){_xlToast("❌ Sin conexión con Google Sheets. Verifica tu internet y la URL.","#c0392b");}
 }
 
 async function _apiPagado(idx){ return abrirModalRegistrarPago(idx); }
@@ -4948,7 +4921,6 @@ function abrirModalAutorizacion(idx){
   if(modal)modal.remove();
   modal=document.createElement("div");
   modal.id="modal-aut";
-  modal.dataset.folio=f.folio||"";
 
   const conceptosHtml=s.items.map((it,i)=>{
     let checked=true;
@@ -4984,7 +4956,7 @@ function abrirModalAutorizacion(idx){
     '<div class="maut-conc"><div class="maut-conc-h">Conceptos autorizados — palomita = se transcribe, sin palomita = NO se transcribe</div>'+conceptosHtml+'</div>'+
     '<div class="maut-acts">'+
     '<button class="maut-no" onclick="cerrarModalAut()">Cancelar</button>'+
-    '<button class="maut-ok" id="maut-confirm-btn" onclick="confirmarAutorizacion()">✓ Autorizar y generar Orden de Servicio</button>'+
+    '<button class="maut-ok" onclick="confirmarAutorizacion('+idx+')">✓ Autorizar y generar Orden de Servicio</button>'+
     '</div></div>';
 
   document.body.appendChild(modal);
@@ -4998,23 +4970,11 @@ function cerrarModalAut(){
   renderFolioList();
 }
 
-async function confirmarAutorizacion(){
-  const modal=document.getElementById("modal-aut");
-  const folio=modal?String(modal.dataset.folio||""):"";
-  const idx=folioRegistry.findIndex(x=>x&&x.folio===folio);
-  const f=idx>=0?folioRegistry[idx]:null;
-
-  if(!f){
-    alert("No pude localizar esta cotización por folio. Cierra el cuadro y vuelve a abrir Autorizar.");
-    return;
-  }
-  if(!f.snapshot||!Array.isArray(f.snapshot.items)){
-    alert("La cotización no tiene conceptos guardados.");
-    return;
-  }
-
+function confirmarAutorizacion(idx){
+  const f=folioRegistry[idx];
+  if(!f)return;
   const s=f.snapshot;
-  const val=id=>{const el=document.getElementById(id);return el?el.value.trim():"";};
+  const g=id=>{const el=document.getElementById(id);return el?el.value.trim():"";};
   const igualaFija=!!s.esIguala;
   const chkIg=document.getElementById("ma-iguala");
   const clasificacion=igualaFija?"IGUALA":(chkIg&&chkIg.checked?"IGUALA":"EXTERNO");
@@ -5031,36 +4991,22 @@ async function confirmarAutorizacion(){
       if(ok)algunoAut=true;
     }
   });
-  if(!algunoAut){
-    alert("Ningún concepto tiene palomita. Marca al menos uno o cancela.");
-    return;
-  }
-
-  const asuntoVal=val("ma-asunto");
+  if(!algunoAut){alert("Ningún concepto tiene palomita. Marca al menos uno o cancela.");return;}
+  const asuntoVal=g("ma-asunto");
   if(!asuntoVal){
     const el=document.getElementById("ma-asunto");
     if(el){el.style.borderColor="#c0392b";el.style.background="#fdf2f1";el.focus();}
-    alert("Escribe el NOMBRE DEL ASUNTO.\n\nAsí se agrupará en el estado de cuenta del cliente.");
+    alert("Escribe el NOMBRE DEL ASUNTO (ej. CAPACITACIÓN, APERTURA, REGULARIZACIÓN…).\n\nAsí se agrupará en el estado de cuenta del cliente.");
     return;
   }
 
   const modoEl=document.querySelector('#modal-aut input[name="ma-modo"]:checked');
   const modo=modoEl?modoEl.value:"promesa";
-  const antMonto=modo==="anticipo"
-    ?(parseFloat((document.getElementById("ma-anticipo-monto")||{value:""}).value.replace(/[^0-9.]/g,""))||0)
-    :0;
-
-  if(modo==="anticipo" && antMonto<=0){
-    alert("Elegiste ANTICIPO pero no capturaste un monto válido.");
-    return;
-  }
-
-  // Guardamos los datos de la orden localmente, PERO todavía no marcamos autorizada.
-  // Así, si Sheets falla, el folio no queda mintiendo como autorizado.
+  const antMonto=modo==="anticipo"?(parseFloat((document.getElementById("ma-anticipo-monto")||{value:""}).value.replace(/[^0-9.]/g,""))||0):0;
   f._orden={
-    asunto:asuntoVal,
-    giro:val("ma-giro"),superficie:val("ma-m2"),contacto:val("ma-contacto"),
-    celular:val("ma-cel"),ubicacion:val("ma-ubi"),aforo:val("ma-aforo"),
+    asunto:g("ma-asunto"),
+    giro:g("ma-giro"),superficie:g("ma-m2"),contacto:g("ma-contacto"),
+    celular:g("ma-cel"),ubicacion:g("ma-ubi"),aforo:g("ma-aforo"),
     clasificacion:clasificacion,autorizados:autorizados,modo:modo,anticipoMonto:antMonto||"",
     fecha:new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"})
   };
@@ -5068,48 +5014,14 @@ async function confirmarAutorizacion(){
   f.asuntoOrden=asuntoVal;
   f._modoTrans=modo;
   f._anticipoMonto=antMonto;
-
-  const btn=document.getElementById("maut-confirm-btn");
-  if(btn){btn.disabled=true;btn.textContent="⏳ Autorizando…";}
-
-  // El servidor recibe una COPIA marcada como autorizada.
-  // El objeto local solo cambiará de status si el servidor devuelve ok:true.
-  const entryServidor=JSON.parse(JSON.stringify(f));
-  entryServidor.status="autorizada";
-  entryServidor._fpAutorizada=_fpSnapshot(entryServidor.snapshot);
-  entryServidor._m=_mNuevo();
-
-  const data=await _apiAutorizar(folio,entryServidor);
-
-  if(!data||!data.ok){
-    f.status="pendiente";
-    f._m=_mNuevo();
-    _guardarRegistroLocal();
-    renderFolioList();
-    if(btn){btn.disabled=false;btn.textContent="✓ Autorizar y generar Orden de Servicio";}
-    return;
-  }
-
-  // Copiar metadatos definitivos del intento exitoso.
-  const idxFin=folioRegistry.findIndex(x=>x&&x.folio===folio);
-  const fFin=idxFin>=0?folioRegistry[idxFin]:null;
-  if(fFin){
-    fFin._orden=entryServidor._orden;
-    fFin.clasificacion=entryServidor.clasificacion;
-    fFin.asuntoOrden=entryServidor.asuntoOrden;
-    fFin._modoTrans=entryServidor._modoTrans;
-    fFin._anticipoMonto=entryServidor._anticipoMonto;
-    fFin.status="autorizada";
-    fFin._fpAutorizada=_fpSnapshot(fFin.snapshot);
-    fFin._m=_mNuevo();
-    _guardarRegistroLocal();
-  }
-
+  f.status="autorizada";
+  f._fpAutorizada=_fpSnapshot(f.snapshot);
+  f._m=_mNuevo();
+  _guardarRegistroLocal();
   cerrarModalAut();
   renderFolioList();
-
-  const idxOrden=folioRegistry.findIndex(x=>x&&x.folio===folio);
-  if(idxOrden>=0)setTimeout(()=>verOrdenServicio(idxOrden),250);
+  _apiAutorizar(idx);
+  setTimeout(()=>verOrdenServicio(idx),400);
 }
 
 function _nombreOrden(f){
