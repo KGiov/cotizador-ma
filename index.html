@@ -384,11 +384,11 @@ body.pdf-neutro .pv-firma-sq .firma-label{visibility:hidden!important;}
 
 /* Badge print */
 .pv-bdg{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;}
-.pv-bg{background:#f0f9f4;color:#2d7a4f;}
-.pv-bj{background:#f4f0fb;color:#5b3fa0;}
-.pv-bo{background:#fdf3ec;color:#c05c10;}
-.pv-bp{background:#fdf2f1;color:#c0392b;}
-.pv-ba{background:#f0f9f4;color:#1a6b3a;}
+.pv-bg{background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;} /* Giros — azul cielo */
+.pv-bj{background:#f3e8ff;color:#7e22ce;border:1px solid #e9d5ff;} /* Jurídico — morado */
+.pv-bo{background:#ffffff;color:#374151;border:1px solid #d1d5db;} /* Obras — blanco */
+.pv-bp{background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe;} /* Protección Civil — azul */
+.pv-ba{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;} /* Ambiental — verde */
 
 @keyframes fu{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 .ti{animation:fu .12s ease;}
@@ -1616,7 +1616,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v22 / API v39", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v23 / API v39", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
