@@ -148,11 +148,11 @@ tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
 tbody tr:hover{background:var(--surface2);}
 td{padding:11px 10px;vertical-align:top;}
 .bdg{display:inline-block;font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:20px;white-space:nowrap;}
-.bg{background:var(--green-bg);color:var(--green);}
-.bj{background:var(--purple-bg);color:var(--purple);}
-.bo{background:var(--orange-bg);color:var(--orange);}
-.bp{background:var(--red-bg);color:var(--red);}
-.ba{background:var(--green-bg);color:#1a6b3a;}
+.bg{background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;} /* Giros Mercantiles — azul cielo */
+.bj{background:#f3e8ff;color:#7e22ce;border:1px solid #e9d5ff;} /* Jurídico — morado */
+.bo{background:#ffffff;color:#374151;border:1px solid #d1d5db;} /* Obras — blanco */
+.bp{background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe;} /* Protección Civil — azul */
+.ba{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;} /* Ambiental — verde */
 .cn{font-size:12px;color:var(--ink);line-height:1.4;margin-bottom:2px;font-weight:500;}
 .cs{font-size:10px;color:var(--ink3);}
 .cn-d{font-size:10px;color:var(--ink2);line-height:1.6;margin-top:4px;padding-top:4px;border-top:1px dashed var(--border);}
@@ -705,8 +705,18 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
       <input id="custom-name" placeholder="Ej. Asesoría especial, Estudio técnico…" autocomplete="off">
     </div>
     <div class="sf">
-      <label>Área / Subcategoría (opcional)</label>
-      <input id="custom-sub" placeholder="Ej. Giros Mercantiles / Consulta">
+      <label>Área</label>
+      <select id="custom-area" style="width:100%;padding:9px 10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:var(--rs);color:#fff;font-family:Inter,sans-serif;font-size:12px;">
+        <option value="giros">Giros Mercantiles</option>
+        <option value="protcivil">Protección Civil</option>
+        <option value="ambiental">Ambiental</option>
+        <option value="juridico">Jurídico</option>
+        <option value="obras">Obras</option>
+      </select>
+    </div>
+    <div class="sf">
+      <label>Subcategoría (opcional)</label>
+      <input id="custom-sub" placeholder="Ej. Consulta, Revalidación, Licencia…">
     </div>
     <div class="sf" style="margin-bottom:4px;"><label>Selecciona los tipos de monto que aplican</label></div>
     <div class="ctype-row">
@@ -725,7 +735,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
       <button class="btn-add" style="margin-top:0;flex:1;" onclick="addCustomItem()">+ Agregar a cotización</button>
     </div>
     <div class="dup-warn" id="custom-warn" style="display:none;margin-top:6px;">⚠ Completa al menos el nombre del concepto y selecciona un tipo de monto.</div>
-    <div id="custom-saved-msg" style="display:none;margin-top:6px;background:rgba(45,122,79,.15);border:1px solid rgba(45,122,79,.3);border-radius:var(--rs);padding:7px 10px;font-size:11px;color:#6ecf9a;line-height:1.4;">✓ Concepto guardado en la base de trámites (área: Personalizados)</div>
+    <div id="custom-saved-msg" style="display:none;margin-top:6px;background:rgba(45,122,79,.15);border:1px solid rgba(45,122,79,.3);border-radius:var(--rs);padding:7px 10px;font-size:11px;color:#6ecf9a;line-height:1.4;">✓ Concepto guardado en la base de trámites con el área seleccionada</div>
   </div>
 
   <div class="sb-b">
@@ -1083,11 +1093,27 @@ function _fixTextoUTF8(v){
     [/desempe\?o/gi,'desempeño'],[/desempeo/gi,'desempeño'],
     [/protecci\?n/gi,'protección'],[/informaci\?n/gi,'información'],[/actualizaci\?n/gi,'actualización'],
     [/autorizaci\?n/gi,'autorización'],[/integraci\?n/gi,'integración'],[/capacitaci\?n/gi,'capacitación'],
+    [/asesor\?a/gi,'asesoría'],[/renovaci\?n/gi,'renovación'],[/demolici\?n/gi,'demolición'],
+    [/gesti\?n/gi,'gestión'],[/suspensi\?n/gi,'suspensión'],[/revalidaci\?n/gi,'revalidación'],
+    [/modificaci\?n/gi,'modificación'],[/regularizaci\?n/gi,'regularización'],
+    [/colocaci\?n/gi,'colocación'],[/hip\?tesis/gi,'hipótesis'],[/apelaci\?n/gi,'apelación'],
+    [/el\?ctrico/gi,'eléctrico'],[/b\?sicas/gi,'básicas'],[/se\?al\?tica/gi,'señalética'],
+    [/tesorer\?a/gi,'tesorería'],[/d\?as/gi,'días'],[/a\?os/gi,'años'],
     [/ju\?rez/gi,'Juárez'],[/alcald\?a/gi,'alcaldía'],[/cuauht\?moc/gi,'Cuauhtémoc'],
     [/obreg\?n/gi,'Obregón'],[/coyoac\?n/gi,'Coyoacán'],[/miguel \?ngel/gi,'Miguel Ángel'],
     [/pizzer\?a/gi,'pizzería'],[/cafeter\?a/gi,'cafetería'],[/mescaler\?a/gi,'mescalería'],
     [/secci\?n/gi,'sección'],[/ampliaci\?n/gi,'ampliación'],[/gonz\?lez/gi,'González'],
     [/avenda\?o/gi,'Avendaño'],[/an\?huac/gi,'Anáhuac'],[/cl\?nica/gi,'clínica'],[/cl\?nicas/gi,'clínicas'],
+    [/\bAnalisis\b/g,'Análisis'],[/\banalisis\b/g,'análisis'],
+    [/\bAsesoria\b/g,'Asesoría'],[/\basesoria\b/g,'asesoría'],
+    [/\bAlcaldia\b/g,'Alcaldía'],[/\balcaldia\b/g,'alcaldía'],
+    [/\bProteccion Civil\b/gi,'Protección Civil'],
+    [/\bconstruccion\b/gi,'construcción'],[/\bcolocacion\b/gi,'colocación'],
+    [/\bdiscriminacion\b/gi,'discriminación'],
+    [/linea de captura Tesoreria/gi,'línea de captura Tesorería'],
+    [/actualizaci['’´`]n/gi,'actualización'],[/protecci['’´`]n/gi,'protección'],
+    [/renovaci['’´`]n/gi,'renovación'],[/revalidaci['’´`]n/gi,'revalidación'],
+    [/modificaci['’´`]n/gi,'modificación'],[/asesor['’´`]a/gi,'asesoría'],
     [/m\?(?=[\s,.;)\]\/]|$)/gi,'m²']
   ];
   for(const [a,b] of reps) s=s.replace(a,b);
@@ -1100,6 +1126,54 @@ function _normalizarDOMUTF8(root){
   const nodes=[]; while(w.nextNode()) nodes.push(w.currentNode);
   nodes.forEach(n=>{ const x=_fixTextoUTF8(n.nodeValue); if(x!==n.nodeValue)n.nodeValue=x; });
   root.querySelectorAll('input,textarea').forEach(el=>{if(typeof el.value==='string')el.value=_fixTextoUTF8(el.value);});
+}
+
+function _sanearObjetoTexto(v){
+  if(Array.isArray(v)) return v.map(_sanearObjetoTexto);
+  if(v && typeof v==="object"){
+    const o={};
+    Object.keys(v).forEach(k=>o[k]=_sanearObjetoTexto(v[k]));
+    return o;
+  }
+  return typeof v==="string"?_fixTextoUTF8(v):v;
+}
+function _normalizarAreaServicio(e){
+  if(!e||typeof e!=="object")return e;
+  const a=String(e.aKey||"").toLowerCase();
+  const s=String(e.s||"").toLowerCase();
+  if(a==="protcivil"||s.includes("protección civil")||s.includes("proteccion civil")){
+    e.aKey="protcivil"; e.al="Protección Civil"; e.ab="bp";
+    if(!e.s||/protecci[oó]n civil/i.test(e.s))e.s="Protección Civil";
+  }else if(a==="juridico"||s==="juridico"||s==="jurídico"){
+    e.aKey="juridico"; e.al="Jurídico"; e.ab="bj";
+    if(!e.s||/^jur[ií]dico$/i.test(e.s))e.s="Jurídico";
+  }else if(a==="obras"||s==="obras"){
+    e.aKey="obras"; e.al="Obras"; e.ab="bo";
+    if(!e.s||/^obras$/i.test(e.s))e.s="Obras";
+  }else if(a==="ambiental"||s==="ambiental"){
+    e.aKey="ambiental"; e.al="Ambiental"; e.ab="ba";
+    if(!e.s)e.s="Ambiental";
+  }else if(a==="giros"||s.includes("giros mercantiles")){
+    e.aKey="giros"; e.al="Giros Mercantiles"; e.ab="bg";
+    if(!e.s||/giros mercantiles/i.test(e.s))e.s="Giros Mercantiles";
+  }
+  return e;
+}
+function _sanearCatalogoLocal(key){
+  try{
+    const raw=localStorage.getItem(key);
+    if(!raw)return false;
+    const arr=JSON.parse(raw);
+    if(!Array.isArray(arr))return false;
+    const limpio=_sanearObjetoTexto(arr).map(_normalizarAreaServicio);
+    const nuevo=JSON.stringify(limpio);
+    if(nuevo!==raw){ localStorage.setItem(key,nuevo); return true; }
+  }catch(e){console.warn("No se pudo normalizar "+key,e);}
+  return false;
+}
+function _sanearCatalogosGuardados(){
+  _sanearCatalogoLocal("ma_servicios_extra");
+  _sanearCatalogoLocal("ma_custom_items");
 }
 function getImpacto(){
   const bajo=document.getElementById("chk-bajo");
@@ -1542,7 +1616,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v18 / API v39", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v21 / API v39", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -1670,6 +1744,7 @@ async function _syncPull(){
 // Refresca la interfaz cuando llegan cambios de otros usuarios
 function _aplicarCambioRemoto(k){
   try{
+    if(k==="ma_servicios_extra"||k==="ma_custom_items") _sanearCatalogoLocal(k);
     if(k === "ma_folio_registry" && typeof renderFolioList === "function"){
       folioRegistry = JSON.parse(localStorage.getItem("ma_folio_registry") || "[]");
       renderFolioList();
@@ -2757,8 +2832,15 @@ function renderCtypeFields(){
 }
 
 function getCustomArea(){
-  if(curA && TAB[curA]) return {al:TAB[curA].l, ab:TAB[curA].b};
-  return {al:"Personalizados", ab:"bg"};
+  const key=(document.getElementById("custom-area")?.value||curA||"giros");
+  const mapa={
+    giros:{al:"Giros Mercantiles",ab:"bg"},
+    protcivil:{al:"Protección Civil",ab:"bp"},
+    ambiental:{al:"Ambiental",ab:"ba"},
+    juridico:{al:"Jurídico",ab:"bj"},
+    obras:{al:"Obras",ab:"bo"}
+  };
+  return {...(mapa[key]||mapa.giros),aKey:key};
 }
 
 function addCustomItem(){
@@ -2789,7 +2871,8 @@ function addCustomItem(){
     v: (tVal===0&&dVal===0&&hVal===0),
     nota: nota||"",
     al: area.al,
-    ab: area.ab
+    ab: area.ab,
+    aKey: area.aKey
   };
   items.push(it);
   render();
@@ -2813,21 +2896,25 @@ function saveCustomToBase(){
   const dVal=ctypeActive.has("d")?parseFloat(document.getElementById("custom-amount-d")?.value||0)||0:0;
   const hVal=ctypeActive.has("h")?parseFloat(document.getElementById("custom-amount-h")?.value||0)||0:0;
 
+  const area=getCustomArea();
   const stored=JSON.parse(localStorage.getItem("ma_custom_items")||"[]");
   const newItem={
     id:"c_saved_"+Date.now(),
-    s: sub||"Personalizados",
+    s: sub||area.al,
     n: name,d:dVal,t:tVal,h:hVal,
     v:(tVal===0&&dVal===0&&hVal===0),
-    nota
+    nota,
+    al:area.al,
+    ab:area.ab,
+    aKey:area.aKey
   };
   stored.push(newItem);
   localStorage.setItem("ma_custom_items", JSON.stringify(stored));
-  if(!TAB["custom"]) TAB["custom"]={l:"Personalizados",b:"bg",items:[]};
-  TAB["custom"].items.push(newItem);
-  // Sync to servicios_extra for the editor
+  if(!TAB[area.aKey]) TAB[area.aKey]={l:area.al,b:area.ab,items:[]};
+  TAB[area.aKey].items.push(newItem);
+  // Sync to servicios_extra for el editor, conservando el área seleccionada
   const srvExtras=getServiciosExtra();
-  srvExtras.unshift({...newItem,aKey:"custom"});
+  srvExtras.unshift({...newItem,aKey:area.aKey});
   setServiciosExtra(srvExtras);
   const msg=document.getElementById("custom-saved-msg");
   msg.style.display="block";
@@ -2836,6 +2923,8 @@ function saveCustomToBase(){
 
 function clearCustomForm(){
   document.getElementById("custom-name").value="";
+  const areaSel=document.getElementById("custom-area");
+  if(areaSel && ["giros","protcivil","ambiental","juridico","obras"].includes(curA)) areaSel.value=curA;
   document.getElementById("custom-sub").value="";
   document.getElementById("custom-nota").value="";
   ctypeActive.clear();
@@ -2845,6 +2934,7 @@ function clearCustomForm(){
 }
 
 (function loadCustom(){
+  _sanearCatalogoLocal("ma_custom_items");
   const stored=JSON.parse(localStorage.getItem("ma_custom_items")||"[]");
   if(stored.length){
     if(!TAB["custom"]) TAB["custom"]={l:"Personalizados",b:"bg",items:[]};
@@ -2855,6 +2945,7 @@ function clearCustomForm(){
 // Cargar servicios extra guardados desde el editor de servicios
 (function loadServiciosExtra(){
   try{
+    _sanearCatalogoLocal("ma_servicios_extra");
     const srvExtras=JSON.parse(localStorage.getItem("ma_servicios_extra")||"[]");
     srvExtras.forEach(e=>{
       const aKey=e.aKey||"custom";
@@ -3542,7 +3633,10 @@ function cerrarEditorServicios(){
 }
 
 function getServiciosExtra(){
-  try{return JSON.parse(localStorage.getItem("ma_servicios_extra")||"[]");}catch(e){return[];}
+  try{
+    _sanearCatalogoLocal("ma_servicios_extra");
+    return JSON.parse(localStorage.getItem("ma_servicios_extra")||"[]");
+  }catch(e){return[];}
 }
 function setServiciosExtra(arr){
   localStorage.setItem("ma_servicios_extra",JSON.stringify(arr));
@@ -5076,3 +5170,132 @@ function _marcarTocado(folio){if(folio)window._foliosTocados[folio]=Date.now();}
   };
 })();
 </script>
+
+<style>
+/* ── v19: vista previa móvil en tarjetas; impresión conserva tabla ───────── */
+@media screen and (max-width:700px){
+  #preview-overlay .pv-paper{
+    overflow:visible!important;
+    padding:14px 12px 28px!important;
+  }
+  #preview-overlay .pv-cc-grid{grid-template-columns:1fr!important;gap:6px!important;}
+  #preview-overlay .pv-ccr{align-items:flex-start!important;}
+  #preview-overlay .pv-ccr label{min-width:88px!important;flex:0 0 88px;}
+
+  #preview-overlay .pv-table{
+    display:block!important;
+    width:100%!important;
+    table-layout:auto!important;
+    font-size:11px!important;
+  }
+  #preview-overlay .pv-table thead{display:none!important;}
+  #preview-overlay .pv-table tbody{display:block!important;width:100%!important;}
+  #preview-overlay .pv-table tbody tr{
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:0;
+    width:100%!important;
+    margin:0 0 12px!important;
+    border:1px solid #e2e5ec!important;
+    border-radius:10px!important;
+    overflow:hidden!important;
+    background:#fff!important;
+    box-shadow:0 1px 3px rgba(26,31,46,.05);
+  }
+  #preview-overlay .pv-table tbody td{
+    display:block!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    padding:9px 10px!important;
+    text-align:left!important;
+    border:0!important;
+    overflow-wrap:normal!important;
+    word-break:normal!important;
+    white-space:normal!important;
+  }
+  /* Área */
+  #preview-overlay .pv-table tbody td:nth-child(1){
+    grid-column:1/-1;
+    padding-bottom:5px!important;
+    background:#f8fafc;
+  }
+  /* Concepto */
+  #preview-overlay .pv-table tbody td:nth-child(2){
+    grid-column:1/-1;
+    padding-top:7px!important;
+    padding-bottom:11px!important;
+    border-bottom:1px solid #eef0f4!important;
+  }
+  #preview-overlay .pv-cn{font-size:12px!important;line-height:1.4!important;font-weight:650!important;}
+  #preview-overlay .pv-cs{font-size:9px!important;margin-top:2px;}
+  #preview-overlay .pv-det{font-size:9px!important;}
+
+  /* Importes */
+  #preview-overlay .pv-table tbody td:nth-child(3),
+  #preview-overlay .pv-table tbody td:nth-child(4),
+  #preview-overlay .pv-table tbody td:nth-child(5){
+    position:relative;
+    padding-top:25px!important;
+    min-height:54px;
+    text-align:center!important;
+    background:#fcfcfd;
+  }
+  #preview-overlay .pv-table tbody td:nth-child(3)::before,
+  #preview-overlay .pv-table tbody td:nth-child(4)::before,
+  #preview-overlay .pv-table tbody td:nth-child(5)::before{
+    position:absolute;
+    top:7px;left:4px;right:4px;
+    font-size:7px;
+    line-height:1.1;
+    font-weight:700;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color:#8890a4;
+    text-align:center;
+    white-space:normal;
+  }
+  #preview-overlay .pv-table tbody td:nth-child(3)::before{content:"Terceros";}
+  #preview-overlay .pv-table tbody td:nth-child(4)::before{content:"Dtos. Tesorería";}
+  #preview-overlay .pv-table tbody td:nth-child(5)::before{content:"Honorarios";}
+  #preview-overlay .pv-price{
+    min-width:0!important;
+    display:inline!important;
+    font-size:11px!important;
+    white-space:nowrap!important;
+  }
+  /* Firma en una franja separada */
+  #preview-overlay .pv-table tbody td:nth-child(6){
+    grid-column:1/-1;
+    display:flex!important;
+    align-items:center;
+    justify-content:flex-end;
+    min-height:42px;
+    border-top:1px solid #eef0f4!important;
+    background:#fff;
+  }
+  #preview-overlay .pv-table tbody td:nth-child(6)::before{
+    content:"Firma";
+    margin-right:auto;
+    font-size:8px;
+    font-weight:700;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:#8890a4;
+  }
+  #preview-overlay .pv-firma-sq{margin:0!important;}
+
+  #preview-overlay .tots-pv{
+    grid-template-columns:1fr 1fr!important;
+    gap:0!important;
+    padding:12px!important;
+  }
+  #preview-overlay .tc-pv{
+    padding:8px 10px!important;
+    border-right:0!important;
+    border-bottom:1px solid rgba(255,255,255,.1);
+  }
+  #preview-overlay .tc-pv:nth-last-child(-n+2){border-bottom:0!important;}
+  #preview-overlay .tc-pv-a{font-size:16px!important;}
+}
+</style>
