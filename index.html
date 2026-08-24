@@ -1463,7 +1463,7 @@ async function _syncRegistryEntry(folio, urgente){
   const body=JSON.stringify({action:"saveRegistry",entries:[f],expected:expected});
   try{
     _setPill("sync","⟳ Guardando "+folio+"…");
-    const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:body,keepalive:!!urgente&&body.length<60000});
+    const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:body});
     const j=await r.json();
     if(!j||!j.ok) throw new Error((j&&j.error)||"respuesta inválida");
     if(Array.isArray(j.conflictos)&&j.conflictos.includes(folio)){
@@ -1616,7 +1616,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v21 / API v39", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v22 / API v39", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -1770,10 +1770,14 @@ window.addEventListener("load", function(){
     setInterval(()=>{_syncPull();_syncRegistryPull();}, SYNC_INTERVALO_MS);
     window.addEventListener("focus", ()=>{_syncPull();_syncRegistryPull();});
     document.addEventListener("visibilitychange", function(){
-      if(document.hidden){ _flushPendientes(true); _regPendientes.forEach(f=>_syncRegistryEntry(f,true)); }  // al minimizar: dispara la subida ya
+      // Apps Script redirige los POST a googleusercontent. Los fetch keepalive
+      // durante pagehide/hidden pueden fallar con 404 aunque el folio ya se haya guardado.
+      // No hacemos POST de _REGISTRO al ocultar: el guardado normal ya lo envía y,
+      // al volver, _syncRegistryPull() verifica/reintenta lo que siga pendiente.
+      if(document.hidden){ _flushPendientes(true); }
       else { _syncPull(); _syncRegistryPull(); }
     });
-    window.addEventListener("pagehide", function(){ _flushPendientes(true); _regPendientes.forEach(f=>_syncRegistryEntry(f,true)); });
+    window.addEventListener("pagehide", function(){ _flushPendientes(true); });
   } else {
     _setPill("local","◌ Solo local");
   }
