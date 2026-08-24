@@ -1337,10 +1337,7 @@ obras:{l:"Obras",b:"bo",items:[
 {id:"dc08",s:"Documentos",n:"Certificación de pago",d:114,t:0,h:0,nota:"Art. 248 XI"}
 ]},
 protcivil:{l:"Protección Civil",b:"bp",items:[
-{id:"pc01",s:"Programa Interno PC",n:"Autorización PIPC hasta 300 m²",d:0,t:0,h:0,v:1,nota:"Varía — cotizar con Mauricio"},
-{id:"pc02",s:"Programa Interno PC",n:"Autorización PIPC 301–600 m²",d:0,t:0,h:0,v:1,nota:"Varía — cotizar con Mauricio"},
-{id:"pc03",s:"Programa Interno PC",n:"Autorización PIPC 601–1000 m²",d:0,t:0,h:0,v:1,nota:"Varía — cotizar con Mauricio"},
-{id:"pc04",s:"Programa Interno PC",n:"Autorización PIPC +1000 m²",d:0,t:0,h:0,v:1,nota:"Consultar con HM"},
+{id:"pcPIPC",s:"Programa Interno PC",n:"Autorización de PIPC",d:0,t:0,h:0,pipcCalc:1,nota:"Calcular según superficie, aforo, actividad y vulnerabilidad"},
 {id:"pc05",s:"Urgente",n:"Implementación URGENTE PIPC",d:0,t:20000,h:0},
 {id:"pc06",s:"Alertamiento Sísmico",n:"Sistema de Alertamiento Sísmico estándar (restaurantes)",d:0,t:20000,h:0},
 {id:"pc07",s:"Alertamiento Sísmico",n:"Sistema de Alertamiento Sísmico amplio (bares de riesgo)",d:0,t:30000,h:0},
@@ -1616,7 +1613,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v24 / API v41", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v25 / API v41", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -2035,10 +2032,231 @@ function addItForce(){
 }
 
 function doAdd(it){
+  if(it && it.pipcCalc){
+    abrirCalculadorPIPC(it);
+    return;
+  }
   items.push(Object.assign({},it,{al:TAB[curA].l,ab:TAB[curA].b,aKey:curA}));
   render();
   curT=null;
   document.querySelectorAll(".ti").forEach(e=>e.classList.remove("on"));
+  document.getElementById("dup-warn").style.display="none";
+}
+
+// ── CALCULADOR AUTORIZACIÓN PIPC ───────────────────────────────
+// Motor reconstruido a partir del arancel histórico y validado
+// contra los importes actuales del sistema de referencia.
+const PIPC_TARIFAS_M2=[
+  {max:299,tarifa:126.50},
+  {max:499,tarifa:123.20},
+  {max:999,tarifa:95.70},
+  {max:1499,tarifa:67.10},
+  {max:1999,tarifa:67.10},
+  {max:2499,tarifa:47.30},
+  {max:2999,tarifa:42.90},
+  {max:3999,tarifa:38.50},
+  {max:4999,tarifa:36.30},
+  {max:5999,tarifa:35.20},
+  {max:6999,tarifa:31.90},
+  {max:7999,tarifa:29.70},
+  {max:8999,tarifa:27.50},
+  {max:9999,tarifa:26.40},
+  {max:Infinity,tarifa:24.20}
+];
+
+const PIPC_ACTIVIDAD={
+  "Mercantil":1.00,
+  "Afluencia":1.80,
+  "Alto Riesgo":2.50,
+  "Industrial":2.00,
+  "Industrial con Químicos":2.50,
+  "Habitacional":0.80,
+  "Inmuebles destinados al servicio público":1.00
+};
+
+const PIPC_VULNERABILIDAD={
+  "Instalaciones, Calderas y Compresores":0.98,
+  "Albercas":0.97,
+  "Sin instalaciones de gas":0.96,
+  "Asistenciales":0.90
+};
+
+function _pipcTarifaM2(m2){
+  const n=Number(m2)||0;
+  const tramo=PIPC_TARIFAS_M2.find(x=>n<=x.max);
+  return tramo?tramo.tarifa:0;
+}
+
+function _pipcM2DesdeGiro(){
+  const txt=(document.getElementById("c3")?.value||"").replace(/,/g,"");
+  // Prioriza un número asociado a m² / m2 / mts; si no existe, deja vacío.
+  const m=txt.match(/(\d+(?:\.\d+)?)\s*(?:m²|m2|mts?\.?|metros?(?:\s+cuadrados)?)/i);
+  return m ? Number(m[1]) : "";
+}
+
+function calcularPIPCPreview(){
+  const m2=Number(document.getElementById("__pipc_m2__")?.value)||0;
+  const aforo=Number(document.getElementById("__pipc_aforo__")?.value)||0;
+  const actividad=document.getElementById("__pipc_actividad__")?.value||"Mercantil";
+  const vulnerabilidad=document.getElementById("__pipc_vuln__")?.value||"Instalaciones, Calderas y Compresores";
+  const urgente=!!document.getElementById("__pipc_urgente__")?.checked;
+
+  const tarifa=_pipcTarifaM2(m2);
+  const fAct=PIPC_ACTIVIDAD[actividad]||1;
+  const fVul=PIPC_VULNERABILIDAD[vulnerabilidad]||1;
+  const ordinario=m2>0 ? m2*tarifa*fAct*fVul : 0;
+  const total=urgente ? ordinario*1.30 : ordinario;
+
+  const box=document.getElementById("__pipc_resultado__");
+  const btn=document.getElementById("__pipc_agregar__");
+  if(box){
+    if(m2<=0){
+      box.innerHTML='<div style="color:#fca5a5;font-size:12px;">Captura una superficie válida para calcular.</div>';
+    }else{
+      box.innerHTML=
+        '<div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;">Costo calculado en Terceros</div>'+
+        '<div style="font-size:25px;font-weight:800;color:#fff;">'+mxn(total)+'</div>'+
+        (urgente?'<div style="margin-top:5px;font-size:10px;color:#93c5fd;">Incluye incremento urgente del 30%</div>':'')+
+        '<div style="margin-top:8px;font-size:10px;color:rgba(255,255,255,.42);line-height:1.55;">'+
+          m2.toLocaleString("es-MX")+' m² · Aforo '+(aforo||0)+' · Tarifa base '+mxn(tarifa)+'/m²<br>'+
+          actividad+' × '+fAct.toFixed(2)+' · '+vulnerabilidad+' × '+fVul.toFixed(2)+
+        '</div>';
+    }
+  }
+  if(btn)btn.disabled=m2<=0;
+  return {m2,aforo,actividad,vulnerabilidad,urgente,tarifa,fAct,fVul,ordinario,total};
+}
+
+function abrirCalculadorPIPC(it){
+  let modal=document.getElementById("__modal_pipc__");
+  if(!modal){
+    modal=document.createElement("div");
+    modal.id="__modal_pipc__";
+    modal.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:9800;display:none;align-items:center;justify-content:center;padding:14px;overflow:auto;-webkit-overflow-scrolling:touch;";
+    modal.innerHTML=`
+      <div style="width:100%;max-width:620px;background:#161a22;border:1px solid rgba(255,255,255,.12);border-radius:14px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.45);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:17px 18px;border-bottom:1px solid rgba(255,255,255,.08);background:#111722;">
+          <div>
+            <div style="font-size:10px;color:#60a5fa;font-weight:800;letter-spacing:.12em;text-transform:uppercase;">Protección Civil</div>
+            <div style="font-size:17px;color:#fff;font-weight:750;margin-top:3px;">Calcular Autorización de PIPC</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.42);margin-top:4px;">El importe calculado se cargará en Terceros.</div>
+          </div>
+          <button type="button" onclick="cerrarCalculadorPIPC()" style="flex:0 0 auto;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#ddd;border-radius:7px;width:38px;height:38px;cursor:pointer;font-size:16px;">✕</button>
+        </div>
+
+        <div style="padding:18px;display:grid;gap:13px;">
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;" class="pipc-grid-2">
+            <label style="display:grid;gap:5px;font-size:10px;color:rgba(255,255,255,.55);">METROS CUADRADOS
+              <input id="__pipc_m2__" type="number" min="0.01" step="0.01" inputmode="decimal" oninput="calcularPIPCPreview()" style="width:100%;box-sizing:border-box;padding:11px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.13);background:#0e131b;color:#fff;font-size:16px;">
+            </label>
+            <label style="display:grid;gap:5px;font-size:10px;color:rgba(255,255,255,.55);">AFORO
+              <input id="__pipc_aforo__" type="number" min="0" step="1" inputmode="numeric" oninput="calcularPIPCPreview()" style="width:100%;box-sizing:border-box;padding:11px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.13);background:#0e131b;color:#fff;font-size:16px;">
+            </label>
+          </div>
+
+          <label style="display:grid;gap:5px;font-size:10px;color:rgba(255,255,255,.55);">TIPO DE ACTIVIDAD
+            <select id="__pipc_actividad__" onchange="calcularPIPCPreview()" style="width:100%;box-sizing:border-box;padding:11px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.13);background:#0e131b;color:#fff;font-size:14px;">
+              <option>Mercantil</option>
+              <option>Afluencia</option>
+              <option>Alto Riesgo</option>
+              <option>Industrial</option>
+              <option>Industrial con Químicos</option>
+              <option>Habitacional</option>
+              <option>Inmuebles destinados al servicio público</option>
+            </select>
+          </label>
+
+          <label style="display:grid;gap:5px;font-size:10px;color:rgba(255,255,255,.55);">FACTOR DE VULNERABILIDAD
+            <select id="__pipc_vuln__" onchange="calcularPIPCPreview()" style="width:100%;box-sizing:border-box;padding:11px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.13);background:#0e131b;color:#fff;font-size:14px;">
+              <option>Instalaciones, Calderas y Compresores</option>
+              <option>Albercas</option>
+              <option>Sin instalaciones de gas</option>
+              <option>Asistenciales</option>
+            </select>
+          </label>
+
+          <label style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:8px;background:#101c30;border:1px solid rgba(96,165,250,.28);cursor:pointer;color:#dbeafe;font-size:12px;">
+            <input id="__pipc_urgente__" type="checkbox" onchange="calcularPIPCPreview()" style="width:18px;height:18px;accent-color:#2563eb;">
+            <span><strong>Urgente</strong> <span style="color:rgba(219,234,254,.62);">(+30% al importe calculado)</span></span>
+          </label>
+
+          <label style="display:grid;gap:5px;font-size:10px;color:rgba(255,255,255,.55);">HONORARIOS DEL DESPACHO <span style="opacity:.65;">(opcional)</span>
+            <input id="__pipc_honorarios__" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" style="width:100%;box-sizing:border-box;padding:11px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.13);background:#0e131b;color:#fff;font-size:16px;">
+          </label>
+
+          <div id="__pipc_resultado__" style="padding:14px 15px;border-radius:10px;background:#0c1421;border:1px solid rgba(96,165,250,.22);"></div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:9px;padding:13px 18px;border-top:1px solid rgba(255,255,255,.08);background:#111722;flex-wrap:wrap;">
+          <button type="button" onclick="cerrarCalculadorPIPC()" style="min-height:42px;padding:0 16px;border-radius:7px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.05);color:#ddd;cursor:pointer;">Cancelar</button>
+          <button type="button" id="__pipc_agregar__" onclick="confirmarCalculadorPIPC()" style="min-height:42px;padding:0 18px;border-radius:7px;border:1px solid #3b82f6;background:#2563eb;color:#fff;font-weight:750;cursor:pointer;">Agregar a cotización</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    // Mobile reflow without changing the document preview styles.
+    const st=document.createElement("style");
+    st.textContent='@media(max-width:520px){#__modal_pipc__ .pipc-grid-2{grid-template-columns:1fr!important;}#__modal_pipc__>div{border-radius:10px!important;}}';
+    document.head.appendChild(st);
+
+    modal.addEventListener("click",e=>{if(e.target===modal)cerrarCalculadorPIPC();});
+  }
+
+  modal.dataset.item=JSON.stringify(it||{});
+  document.getElementById("__pipc_m2__").value=_pipcM2DesdeGiro()||"";
+  document.getElementById("__pipc_aforo__").value="";
+  document.getElementById("__pipc_actividad__").value="Mercantil";
+  document.getElementById("__pipc_vuln__").value="Instalaciones, Calderas y Compresores";
+  document.getElementById("__pipc_urgente__").checked=false;
+  document.getElementById("__pipc_honorarios__").value="";
+  modal.style.display="flex";
+  calcularPIPCPreview();
+  setTimeout(()=>document.getElementById("__pipc_m2__")?.focus(),50);
+}
+
+function cerrarCalculadorPIPC(){
+  const m=document.getElementById("__modal_pipc__");
+  if(m)m.style.display="none";
+  curT=null;
+  document.querySelectorAll(".ti").forEach(e=>e.classList.remove("on"));
+}
+
+function confirmarCalculadorPIPC(){
+  const calc=calcularPIPCPreview();
+  if(calc.m2<=0){alert("Captura los metros cuadrados.");return;}
+  const honorarios=Math.max(0,Number(document.getElementById("__pipc_honorarios__")?.value)||0);
+  const nombre=calc.urgente ? "Autorización urgente de PIPC" : "Autorización de PIPC";
+  const tercero=Math.round(calc.total*100)/100;
+
+  const nuevo={
+    id:"pcPIPC",
+    s:"Programa Interno PC",
+    n:nombre,
+    d:0,
+    t:tercero,
+    h:honorarios,
+    al:"Protección Civil",
+    ab:"bp",
+    aKey:"protcivil",
+    detalle:calc.m2.toLocaleString("es-MX")+" m² · Aforo "+calc.aforo+" · "+calc.actividad+" · "+calc.vulnerabilidad,
+    nota:"Cálculo PIPC: tarifa base "+mxn(calc.tarifa)+"/m² × actividad "+calc.fAct.toFixed(2)+" × vulnerabilidad "+calc.fVul.toFixed(2)+(calc.urgente?" · Urgente +30%":""),
+    pipc:{
+      m2:calc.m2,
+      aforo:calc.aforo,
+      actividad:calc.actividad,
+      vulnerabilidad:calc.vulnerabilidad,
+      tarifaBase:calc.tarifa,
+      factorActividad:calc.fAct,
+      factorVulnerabilidad:calc.fVul,
+      urgente:calc.urgente,
+      importeOrdinario:Math.round(calc.ordinario*100)/100,
+      importeTerceros:tercero
+    }
+  };
+
+  items.push(nuevo);
+  cerrarCalculadorPIPC();
+  render();
   document.getElementById("dup-warn").style.display="none";
 }
 
