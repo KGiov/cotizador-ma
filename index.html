@@ -1286,10 +1286,9 @@ function _vbAutomatico(tipo,m2){
 function _sueloAutomatico(tipo){
   return _areaItem({
     id:"auto_"+tipo+"_suelo",s:"Uso de Suelo",n:"Certificado de Uso de Suelo Digital",
-    d:2104,h:tipo==="bajo"?0:5000,
-    hLabel:tipo==="bajo"?"Variable":"",
+    d:2104,h:5000,
     detalle:"Digital",
-    nota:tipo==="bajo"?"Honorarios por definir":"",
+    nota:"",
     _selectorTipo:"suelo",
     _impactoTipo:tipo,
     _opcion:"digital"
@@ -1369,17 +1368,17 @@ function _aplicarPaqueteAutomatico(mostrarAviso=true){
     p.push(_areaItem({id:"auto_"+tipo+"_agua",s:"Constancias",n:"Constancia de no adeudos agua",d:228},"giros"));
   }
   if(tipo==="zonal"){
-    p.push(_areaItem({id:"auto_zonal_reval",s:"Apertura Zonal",n:"Aviso de revalidación de impacto zonal",nota:"Sin importe precargado"},"giros"));
+    p.push(_areaItem({id:"auto_zonal_reval",s:"Apertura Zonal",n:"Aviso de revalidación de impacto zonal",h:30000},"giros"));
   }
   p.push(_vbAutomatico(tipo,m2));
 
   if(tipo==="bajo"){
-    p.push(_areaItem({id:"auto_bajo_hon",s:"Apertura Bajo Impacto",n:"Honorarios Profesionales por Apertura de Bajo Impacto",h:40000},"giros"));
+    p.push(_areaItem({id:"auto_bajo_hon",s:"Apertura Bajo Impacto",n:"Honorarios Profesionales por Apertura de Bajo Impacto",h:25000},"giros"));
   }else if(tipo==="vecinal"){
     p.push(_areaItem({id:"auto_vec_aforo",s:"Apertura Impacto Vecinal",n:"Dictamen de Aforo",d:0,t:0,h:0,nota:"Importe pendiente de definir"},"giros"));
     p.push(_areaItem({id:"auto_vec_hon",s:"Apertura Impacto Vecinal",n:"Honorarios Profesionales por Apertura",h:50000},"giros"));
   }else{
-    p.push(_areaItem({id:"auto_zon_hon",s:"Apertura Impacto Zonal",n:"Honorarios Profesionales por Apertura",h:85000},"giros"));
+    p.push(_areaItem({id:"auto_zon_hon",s:"Apertura Impacto Zonal",n:"Honorarios Profesionales por Apertura",h:60000},"giros"));
     p.push(_areaItem({id:"auto_zon_ssp",s:"Apertura Impacto Zonal",n:"Visto Bueno del Sistema de Seguridad ante SSP",h:20000},"giros"));
     p.push(_areaItem({id:"auto_zon_riesgo",s:"Apertura Impacto Zonal",n:"Dictamen de Consejo de Evaluación de Riesgo",h:25000},"giros"));
   }
@@ -1387,8 +1386,9 @@ function _aplicarPaqueteAutomatico(mostrarAviso=true){
   p.push(_areaItem({id:"auto_"+tipo+"_salud",s:"Apertura",n:"Aviso de Salud",h:8000},"giros"));
   p.push(..._proteccionCivilAuto(tipo,m2,aforo));
 
-  // En Zonal, la Licencia Ambiental forma parte del paquete y usa el mismo
-  // configurador MAU / Informe + estudios.
+  // Vecinal y Zonal incluyen el mismo paquete ambiental:
+  // MAU / Informe de Desempeño Ambiental + estudios seleccionables.
+  if(tipo==="vecinal")p.push(..._ambientalAuto("auto_vecinal_amb",false));
   if(tipo==="zonal")p.push(..._ambientalAuto("auto_zonal_amb",true));
 
   _dedupeAutoNombres(p);
@@ -2643,12 +2643,8 @@ function _cambiarSelectorServicio(idx,tipo,valor){
     const modalidad=valor==="fisico"?"Físico":"Digital";
     it.detalle=modalidad;
     it.n="Certificado de Uso de Suelo "+modalidad;
-    if(it._impactoTipo==="bajo"){
-      it.h=0; it.hLabel="Variable";
-    }else{
-      it.h=valor==="fisico"?8000:5000;
-      delete it.hLabel;
-    }
+    it.h=valor==="fisico"?8000:5000;
+    delete it.hLabel;
   }else if(tipo==="ambiental"){
     it._opcion=valor;
     const nombre=valor==="ida"?"Informe de Desempeño Ambiental":"Manifestación Ambiental Única";
