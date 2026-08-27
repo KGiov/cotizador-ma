@@ -660,7 +660,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
           Regularización
         </label>
       </div>
-      <button type="button" onclick="_abrirConfiguradorPaquete()" style="margin-top:7px;width:100%;padding:7px 9px;border-radius:6px;border:1px solid rgba(96,165,250,.28);background:rgba(37,99,235,.10);color:#93c5fd;font-size:10px;font-weight:700;cursor:pointer;">⚙ Configurar conceptos automáticos</button>
+      <button type="button" onclick="_aplicarPaqueteAutomatico(true)" style="margin-top:7px;width:100%;padding:7px 9px;border-radius:6px;border:1px solid rgba(96,165,250,.28);background:rgba(37,99,235,.10);color:#93c5fd;font-size:10px;font-weight:700;cursor:pointer;">↻ Actualizar conceptos automáticos</button>
     </div>
   </div>
 
@@ -1237,8 +1237,17 @@ function _seleccionarImpacto(tipo,el){
     if(x&&k!==tipo)x.checked=false;
   });
   rdDatos();
-  if(el.checked)_abrirConfiguradorPaquete();
-  else{
+  if(el.checked){
+    const m2=_m2Actual();
+    if(!m2){
+      el.checked=false;
+      rdDatos();
+      alert('Indique los metros cuadrados en "Giro / Superficie" antes de seleccionar el tipo de impacto.');
+      try{document.getElementById("c3").focus();}catch(e){}
+      return;
+    }
+    _aplicarPaqueteAutomatico(true);
+  }else{
     items=items.filter(x=>!x._autoPack);
     render();
   }
@@ -1275,31 +1284,34 @@ function _vbAutomatico(tipo,m2){
 }
 
 function _sueloAutomatico(tipo){
-  const fisico=__autoCfg.suelo==="fisico";
-  let h=0,hLabel="";
-  if(tipo==="bajo"){hLabel="Variable";}
-  else h=fisico?8000:5000;
   return _areaItem({
     id:"auto_"+tipo+"_suelo",s:"Uso de Suelo",n:"Certificado de Uso de Suelo",
-    d:2104,h:h,hLabel:hLabel,
-    detalle:fisico?"Físico":"Digital",
-    nota:tipo==="bajo"?"Honorarios por definir":""
+    d:2104,h:tipo==="bajo"?0:5000,
+    hLabel:tipo==="bajo"?"Variable":"",
+    detalle:"Digital",
+    nota:tipo==="bajo"?"Honorarios por definir":"",
+    _selectorTipo:"suelo",
+    _impactoTipo:tipo,
+    _opcion:"digital"
   },"giros");
 }
 
 function _proteccionCivilAuto(tipo,m2,aforo){
   // Hasta 250 m² Y hasta 100 personas => Oficio + Medidas.
   // 251 m² O 101 personas en adelante => Autorización PIPC.
-  if(m2<=250 && aforo<=100){
+  const superaAforo = aforo>=101;
+  if(m2<=250 && !superaAforo){
+    const det=aforo?m2+" m² · Aforo "+aforo:m2+" m²";
     return [
-      _areaItem({id:"auto_"+tipo+"_ono",s:"Protección Civil",n:"Oficio de no obligatoriedad",h:5000,detalle:m2+" m² · Aforo "+aforo},"protcivil"),
-      _areaItem({id:"auto_"+tipo+"_mb",s:"Protección Civil",n:"Medidas básicas de Protección Civil",t:10500,detalle:m2+" m² · Aforo "+aforo},"protcivil")
+      _areaItem({id:"auto_"+tipo+"_ono",s:"Protección Civil",n:"Oficio de no obligatoriedad",h:5000,detalle:det},"protcivil"),
+      _areaItem({id:"auto_"+tipo+"_mb",s:"Protección Civil",n:"Medidas básicas de Protección Civil",t:10500,detalle:det},"protcivil")
     ];
   }
+  const det=aforo?m2+" m² · Aforo "+aforo:m2+" m²";
   return [
     _areaItem({
       id:"auto_"+tipo+"_pipc",s:"Programa Interno PC",n:"Autorización de Programa Interno de Protección Civil",
-      detalle:m2+" m² · Aforo "+aforo,
+      detalle:det,
       nota:"Pendiente de completar por el responsable de Protección Civil"
     },"protcivil")
   ];
@@ -1316,13 +1328,15 @@ function _estudiosAmbientalesAuto(prefix){
   return arr;
 }
 function _ambientalAuto(prefix,licenciaZonal){
-  const tipo=__autoCfg.ambientalTipo||"Manifestación Ambiental Única";
   const base=_areaItem({
     id:prefix+"_base",s:licenciaZonal?"Licencia Ambiental":"Manifestación Ambiental",
-    n:licenciaZonal?("Licencia Ambiental — "+tipo):tipo,
+    n:licenciaZonal?"Licencia Ambiental":"Manifestación Ambiental Única",
     h:18000,
-    detalle:"Base ambiental $18,000 + estudios seleccionados",
-    nota:"50% anticipo y 50% carga en plataforma"
+    detalle:"Manifestación Ambiental Única",
+    nota:"50% anticipo y 50% carga en plataforma",
+    _selectorTipo:"ambiental",
+    _licenciaZonal:!!licenciaZonal,
+    _opcion:"mau"
   },"ambiental");
   return [base].concat(_estudiosAmbientalesAuto(prefix));
 }
@@ -1344,8 +1358,8 @@ function _aplicarPaqueteAutomatico(mostrarAviso=true){
   const tipo=_impactoActivo();
   if(!tipo)return;
   const m2=_m2Actual(),aforo=_aforoActual();
-  if(!m2 || !aforo){
-    if(mostrarAviso)alert("Captura la superficie en “Giro / Superficie” y el aforo para generar el paquete.");
+  if(!m2){
+    if(mostrarAviso)alert('Indique los metros cuadrados en "Giro / Superficie".');
     return;
   }
   const p=[];
@@ -1447,7 +1461,7 @@ function _abrirConfiguradorPaquete(){
 function _confirmarPaqueteAuto(){
   const m2=Number(document.getElementById("__auto_m2__").value)||0;
   const aforo=Number(document.getElementById("__auto_aforo__").value)||0;
-  if(!m2||!aforo)return alert("Captura superficie y aforo.");
+  if(!m2)return alert('Indique los metros cuadrados en "Giro / Superficie".');
   // Mantener Giro y superficie en el mismo campo sin destruir el giro escrito.
   let c3=document.getElementById("c3"),txt=String(c3.value||"").trim();
   if(/(\d+(?:\.\d+)?)\s*(?:m²|m2|mts?\.?|metros?)/i.test(txt))txt=txt.replace(/(\d+(?:\.\d+)?)\s*(?:m²|m2|mts?\.?|metros?(?:\s+cuadrados)?)/i,m2+" m²");
@@ -1465,7 +1479,6 @@ function _confirmarPaqueteAuto(){
 // ── CONFIGURADOR AMBIENTAL INDEPENDIENTE ──────────────────────
 function selAmbiental(){
   selA("ambiental");
-  abrirConfiguradorAmbiental();
 }
 function abrirConfiguradorAmbiental(){
   let m=document.getElementById("__modal_ambiental__");
@@ -2621,6 +2634,45 @@ function confirmarCalculadorPIPC(){
 }
 
 // ── RENDER ─────────────────────────────────────────────────────
+
+function _cambiarSelectorServicio(idx,tipo,valor){
+  const it=items[idx]; if(!it)return;
+  if(tipo==="suelo"){
+    it._opcion=valor;
+    it.detalle=valor==="fisico"?"Físico":"Digital";
+    if(it._impactoTipo==="bajo"){
+      it.h=0; it.hLabel="Variable";
+    }else{
+      it.h=valor==="fisico"?8000:5000;
+      delete it.hLabel;
+    }
+  }else if(tipo==="ambiental"){
+    it._opcion=valor;
+    const nombre=valor==="ida"?"Informe de Desempeño Ambiental":"Manifestación Ambiental Única";
+    it.detalle=nombre;
+    it.n=it._licenciaZonal?("Licencia Ambiental — "+nombre):nombre;
+    it.h=18000;
+    it.nota="50% anticipo y 50% carga en plataforma";
+  }
+  render();
+}
+
+function _selectorHtmlServicio(it,idx){
+  if(it._selectorTipo==="suelo"){
+    return '<select onchange="_cambiarSelectorServicio('+idx+',\\'suelo\\',this.value)" style="margin-top:5px;width:100%;max-width:230px;background:#fff;border:1px solid #d5d5d5;border-radius:4px;padding:4px 6px;font-size:9px;color:#222;">'+
+      '<option value="digital" '+(it._opcion!=="fisico"?"selected":"")+'>Digital</option>'+
+      '<option value="fisico" '+(it._opcion==="fisico"?"selected":"")+'>Físico</option>'+
+    '</select>';
+  }
+  if(it._selectorTipo==="ambiental"){
+    return '<select onchange="_cambiarSelectorServicio('+idx+',\\'ambiental\\',this.value)" style="margin-top:5px;width:100%;max-width:300px;background:#fff;border:1px solid #d5d5d5;border-radius:4px;padding:4px 6px;font-size:9px;color:#222;">'+
+      '<option value="mau" '+(it._opcion!=="ida"?"selected":"")+'>Manifestación Ambiental Única</option>'+
+      '<option value="ida" '+(it._opcion==="ida"?"selected":"")+'>Informe de Desempeño Ambiental</option>'+
+    '</select>';
+  }
+  return "";
+}
+
 function render(){
   const es=document.getElementById("es"),tbl=document.getElementById("tbl"),tots=document.getElementById("tots");
   const niva=document.getElementById("niva"),banco=document.getElementById("banco"),bpdf=document.getElementById("bpdf");
