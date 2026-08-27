@@ -1293,8 +1293,15 @@ function _m2TarifaImpacto(m2){
   return n>0?Math.ceil(n-1e-9):0;
 }
 
+function _m2TarifaAvisoImpacto(m2){
+  const redondeado=_m2TarifaImpacto(m2);
+  // Tope EXCLUSIVO para derechos por Aviso/Revalidación de Impacto:
+  // cualquier superficie superior a 300 m² se cobra como 300 m².
+  return Math.min(redondeado,300);
+}
+
 function _derechoImpacto2026(tipo,m2,tramite){
-  const n=_m2TarifaImpacto(m2);
+  const n=_m2TarifaAvisoImpacto(m2);
   if(!n || (tipo!=="vecinal"&&tipo!=="zonal") || !tramite)return 0;
 
   let permiso=0;
@@ -1472,7 +1479,8 @@ function _conceptosImpactoEconomicos(tipo,m2){
 
   const regular=tr==="regularizacion";
   const tipoTxt=tipo==="vecinal"?"Vecinal":"Zonal";
-  const m2Tarifa=_m2TarifaImpacto(m2);
+  const m2RealRedondeado=_m2TarifaImpacto(m2);
+  const m2Tarifa=_m2TarifaAvisoImpacto(m2);
   const derecho=_derechoImpacto2026(tipo,m2,tr);
 
   const derechos=_areaItem({
@@ -1482,8 +1490,10 @@ function _conceptosImpactoEconomicos(tipo,m2){
       ? "Derechos por Revalidación de Aviso de Impacto "+tipoTxt
       : "Derechos por Aviso de Impacto "+tipoTxt,
     d:derecho,
-    detalle:m2Tarifa+" m² · "+(regular?"Revalidación":"Permiso nuevo"),
-    nota:m2Tarifa!==Number(m2)?"Superficie redondeada hacia arriba para el cálculo de derechos":""
+    detalle:m2Tarifa+" m² tarifarios · "+(regular?"Revalidación":"Permiso nuevo"),
+    nota:m2RealRedondeado>300
+      ? "Tope tarifario del Aviso de Impacto aplicado a 300 m²"
+      : (m2Tarifa!==Number(m2)?"Superficie redondeada hacia arriba para el cálculo de derechos":"")
   },"giros");
 
   const hon=_honorarioImpactoDinamico(tipo,tr,{
