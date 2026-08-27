@@ -2659,13 +2659,13 @@ function _cambiarSelectorServicio(idx,tipo,valor){
 
 function _selectorHtmlServicio(it,idx){
   if(it._selectorTipo==="suelo"){
-    return '<select onchange="_cambiarSelectorServicio('+idx+',\\'suelo\\',this.value)" style="margin-top:5px;width:100%;max-width:230px;background:#fff;border:1px solid #d5d5d5;border-radius:4px;padding:4px 6px;font-size:9px;color:#222;">'+
+    return '<select onchange="_cambiarSelectorServicio('+idx+',\'suelo\',this.value)" style="margin-top:5px;width:100%;max-width:230px;background:#fff;border:1px solid #d5d5d5;border-radius:4px;padding:4px 6px;font-size:9px;color:#222;">'+
       '<option value="digital" '+(it._opcion!=="fisico"?"selected":"")+'>Digital</option>'+
       '<option value="fisico" '+(it._opcion==="fisico"?"selected":"")+'>Físico</option>'+
     '</select>';
   }
   if(it._selectorTipo==="ambiental"){
-    return '<select onchange="_cambiarSelectorServicio('+idx+',\\'ambiental\\',this.value)" style="margin-top:5px;width:100%;max-width:300px;background:#fff;border:1px solid #d5d5d5;border-radius:4px;padding:4px 6px;font-size:9px;color:#222;">'+
+    return '<select onchange="_cambiarSelectorServicio('+idx+',\'ambiental\',this.value)" style="margin-top:5px;width:100%;max-width:300px;background:#fff;border:1px solid #d5d5d5;border-radius:4px;padding:4px 6px;font-size:9px;color:#222;">'+
       '<option value="mau" '+(it._opcion!=="ida"?"selected":"")+'>Manifestación Ambiental Única</option>'+
       '<option value="ida" '+(it._opcion==="ida"?"selected":"")+'>Informe de Desempeño Ambiental</option>'+
     '</select>';
