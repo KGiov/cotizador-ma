@@ -1285,7 +1285,7 @@ function _vbAutomatico(tipo,m2){
 
 function _sueloAutomatico(tipo){
   return _areaItem({
-    id:"auto_"+tipo+"_suelo",s:"Uso de Suelo",n:"Certificado de Uso de Suelo",
+    id:"auto_"+tipo+"_suelo",s:"Uso de Suelo",n:"Certificado de Uso de Suelo Digital",
     d:2104,h:tipo==="bajo"?0:5000,
     hLabel:tipo==="bajo"?"Variable":"",
     detalle:"Digital",
@@ -1330,7 +1330,7 @@ function _estudiosAmbientalesAuto(prefix){
 function _ambientalAuto(prefix,licenciaZonal){
   const base=_areaItem({
     id:prefix+"_base",s:licenciaZonal?"Licencia Ambiental":"Manifestación Ambiental",
-    n:licenciaZonal?"Licencia Ambiental":"Manifestación Ambiental Única",
+    n:"Manifestación Ambiental Única",
     h:18000,
     detalle:"Manifestación Ambiental Única",
     nota:"50% anticipo y 50% carga en plataforma",
@@ -1376,6 +1376,7 @@ function _aplicarPaqueteAutomatico(mostrarAviso=true){
   if(tipo==="bajo"){
     p.push(_areaItem({id:"auto_bajo_hon",s:"Apertura Bajo Impacto",n:"Honorarios Profesionales por Apertura de Bajo Impacto",h:40000},"giros"));
   }else if(tipo==="vecinal"){
+    p.push(_areaItem({id:"auto_vec_aforo",s:"Apertura Impacto Vecinal",n:"Dictamen de Aforo",d:0,t:0,h:0,nota:"Importe pendiente de definir"},"giros"));
     p.push(_areaItem({id:"auto_vec_hon",s:"Apertura Impacto Vecinal",n:"Honorarios Profesionales por Apertura",h:50000},"giros"));
   }else{
     p.push(_areaItem({id:"auto_zon_hon",s:"Apertura Impacto Zonal",n:"Honorarios Profesionales por Apertura",h:85000},"giros"));
@@ -2639,7 +2640,9 @@ function _cambiarSelectorServicio(idx,tipo,valor){
   const it=items[idx]; if(!it)return;
   if(tipo==="suelo"){
     it._opcion=valor;
-    it.detalle=valor==="fisico"?"Físico":"Digital";
+    const modalidad=valor==="fisico"?"Físico":"Digital";
+    it.detalle=modalidad;
+    it.n="Certificado de Uso de Suelo "+modalidad;
     if(it._impactoTipo==="bajo"){
       it.h=0; it.hLabel="Variable";
     }else{
@@ -2650,7 +2653,7 @@ function _cambiarSelectorServicio(idx,tipo,valor){
     it._opcion=valor;
     const nombre=valor==="ida"?"Informe de Desempeño Ambiental":"Manifestación Ambiental Única";
     it.detalle=nombre;
-    it.n=it._licenciaZonal?("Licencia Ambiental — "+nombre):nombre;
+    it.n=nombre;
     it.h=18000;
     it.nota="50% anticipo y 50% carga en plataforma";
   }
@@ -2659,13 +2662,13 @@ function _cambiarSelectorServicio(idx,tipo,valor){
 
 function _selectorHtmlServicio(it,idx){
   if(it._selectorTipo==="suelo"){
-    return '<select onchange="_cambiarSelectorServicio('+idx+',\'suelo\',this.value)" style="margin-top:5px;width:100%;max-width:230px;background:#fff;border:1px solid #d5d5d5;border-radius:4px;padding:4px 6px;font-size:9px;color:#222;">'+
+    return '<select onchange="_cambiarSelectorServicio('+idx+',\'suelo\',this.value)" style="display:block;margin-top:7px;width:100%;max-width:250px;background:#fff;border:1px solid #b07d2e;border-radius:5px;padding:6px 8px;font-size:10px;color:#1a1f2e;font-weight:600;">'+
       '<option value="digital" '+(it._opcion!=="fisico"?"selected":"")+'>Digital</option>'+
       '<option value="fisico" '+(it._opcion==="fisico"?"selected":"")+'>Físico</option>'+
     '</select>';
   }
   if(it._selectorTipo==="ambiental"){
-    return '<select onchange="_cambiarSelectorServicio('+idx+',\'ambiental\',this.value)" style="margin-top:5px;width:100%;max-width:300px;background:#fff;border:1px solid #d5d5d5;border-radius:4px;padding:4px 6px;font-size:9px;color:#222;">'+
+    return '<select onchange="_cambiarSelectorServicio('+idx+',\'ambiental\',this.value)" style="display:block;margin-top:7px;width:100%;max-width:330px;background:#fff;border:1px solid #15803d;border-radius:5px;padding:6px 8px;font-size:10px;color:#1a1f2e;font-weight:600;">'+
       '<option value="mau" '+(it._opcion!=="ida"?"selected":"")+'>Manifestación Ambiental Única</option>'+
       '<option value="ida" '+(it._opcion==="ida"?"selected":"")+'>Informe de Desempeño Ambiental</option>'+
     '</select>';
@@ -2708,7 +2711,7 @@ function render(){
     tr.setAttribute("draggable","true");
     tr.setAttribute("data-idx",i);
     tr.innerHTML='<td style="cursor:grab;text-align:center;color:var(--border2);font-size:14px;user-select:none;" class="drag-handle" title="Arrastra para reordenar">⠿</td><td><span class="bdg '+it.ab+'">'+it.al+'</span></td>'+
-      '<td><div class="cn">'+it.n+'</div><div class="cs">'+it.s+'</div>'+det+notaHtml+descuentoBadge+'</td>'+
+      '<td><div class="cn">'+it.n+'</div><div class="cs">'+it.s+'</div>'+det+_selectorHtmlServicio(it,i)+notaHtml+descuentoBadge+'</td>'+
       '<td class="r"><span class="at sb-price" contenteditable="true" data-idx="'+i+'" data-type="t" style="cursor:text;min-width:50px;display:inline-block;border-radius:2px;">'+tsRaw+'</span>'+tOriginalHtml+'</td>'+
       '<td class="r"><span class="ad sb-price" contenteditable="true" data-idx="'+i+'" data-type="d" style="cursor:text;min-width:50px;display:inline-block;border-radius:2px;">'+dsRaw+'</span></td>'+
       '<td class="r"><span class="ah sb-price" contenteditable="true" data-idx="'+i+'" data-type="h" style="cursor:text;min-width:50px;display:inline-block;border-radius:2px;">'+hsRaw+'</span></td>'+
