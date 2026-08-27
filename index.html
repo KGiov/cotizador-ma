@@ -614,7 +614,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
   <div class="sb-b">
     <div class="sb-l">Datos del cliente</div>
     <div class="sf"><label>Nombre Comercial</label><input id="c1" placeholder="Ej. Restaurante El Patio" oninput="rdDatos();checkBtnGuardarCliente()"></div>
-    <div class="sf"><label>Domicilio</label><input id="c2" placeholder="Calle, Colonia, Alcaldía"></div>
+    <div class="sf"><label>Domicilio</label><input id="c2" placeholder="Calle, Colonia, Alcaldía" oninput="rdDatos();_programarRecalculoPaquete()"></div>
     <div class="sf"><label>Giro / Superficie</label><input id="c3" placeholder="Ej. Bar, Restaurante, 450 m²…" oninput="rdDatos();_programarRecalculoPaquete()"></div>
     <div class="sf"><label>Aforo (personas)</label><input id="c9" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej. 85" oninput="rdDatos();_programarRecalculoPaquete()"></div>
     <div class="sf"><label>Solicitante del Servicio</label><input id="c4" placeholder="Nombre del representante"></div>
@@ -632,38 +632,62 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
   </div>
 
   <div class="sb-b">
-    <div class="sb-l">Clasificación del caso</div>
+    <div class="sb-l">Tipo de Impacto</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:6px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);">
+        <input type="checkbox" id="chk-bajo" onchange="_seleccionarImpacto('bajo',this)" style="accent-color:#b07d2e;cursor:pointer;">
+        Bajo Impacto
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:6px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);">
+        <input type="checkbox" id="chk-vecinal" onchange="_seleccionarImpacto('vecinal',this)" style="accent-color:#b07d2e;cursor:pointer;">
+        Impacto Vecinal
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:6px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);grid-column:1/-1;">
+        <input type="checkbox" id="chk-zonal" onchange="_seleccionarImpacto('zonal',this)" style="accent-color:#b07d2e;cursor:pointer;">
+        Impacto Zonal
+      </label>
+    </div>
+  </div>
+
+  <div class="sb-b">
+    <div class="sb-l">Tipo de cliente</div>
     <div style="display:grid;gap:6px;">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.65);padding:6px 8px;background:rgba(255,255,255,.05);border-radius:5px;border:1px solid rgba(255,255,255,.09);">
         <input type="checkbox" id="chk-nuevo" onchange="rdDatos()" style="width:14px;height:14px;accent-color:#b07d2e;cursor:pointer;">
         <span>Cliente <strong>nuevo</strong></span>
       </label>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:5px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);">
-          <input type="checkbox" id="chk-bajo" onchange="_seleccionarImpacto('bajo',this)" style="accent-color:#b07d2e;cursor:pointer;">
-          Bajo Impacto
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:5px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);">
-          <input type="checkbox" id="chk-vecinal" onchange="_seleccionarImpacto('vecinal',this)" style="accent-color:#b07d2e;cursor:pointer;">
-          Impacto Vecinal
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:5px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);">
-          <input type="checkbox" id="chk-zonal" onchange="_seleccionarImpacto('zonal',this)" style="accent-color:#b07d2e;cursor:pointer;">
-          Impacto Zonal
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:5px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);">
-          <input type="checkbox" id="chk-apertura" onchange="rdDatos()" style="accent-color:#b07d2e;cursor:pointer;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.65);padding:6px 7px;background:rgba(37,99,235,.10);border-radius:5px;border:1px solid rgba(96,165,250,.22);">
+          <input type="checkbox" id="chk-apertura" onchange="_seleccionarTipoTramite('apertura',this)" style="accent-color:#60a5fa;cursor:pointer;">
           Apertura
         </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:5px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);grid-column:1 / -1;">
-          <input type="checkbox" id="chk-regular" onchange="rdDatos()" style="accent-color:#b07d2e;cursor:pointer;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.65);padding:6px 7px;background:rgba(37,99,235,.10);border-radius:5px;border:1px solid rgba(96,165,250,.22);">
+          <input type="checkbox" id="chk-regular" onchange="_seleccionarTipoTramite('regular',this)" style="accent-color:#60a5fa;cursor:pointer;">
           Regularización
         </label>
       </div>
-      <button type="button" onclick="_aplicarPaqueteAutomatico(true)" style="margin-top:7px;width:100%;padding:7px 9px;border-radius:6px;border:1px solid rgba(96,165,250,.28);background:rgba(37,99,235,.10);color:#93c5fd;font-size:10px;font-weight:700;cursor:pointer;">↻ Actualizar conceptos automáticos</button>
+
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.75);padding:8px 10px;background:rgba(176,125,46,.1);border-radius:5px;border:1px solid rgba(176,125,46,.3);">
+        <input type="checkbox" id="chk-iguala" onchange="rdDatos();render()" style="width:14px;height:14px;accent-color:#b07d2e;cursor:pointer;">
+        <span>⭐ Cliente de <strong>Iguala</strong></span>
+      </label>
+      <div id="iguala-info" style="display:none;background:rgba(176,125,46,.08);border:1px solid rgba(176,125,46,.2);border-radius:5px;padding:8px 10px;font-size:10px;color:rgba(255,255,255,.5);line-height:1.6;">
+        • Atención personalizada 24/7<br>
+        • Emergencias: verificaciones y operativos<br>
+        • Nulidades hasta 1ª instancia incluidas<br>
+        • Calendario anual de vencimientos en enero<br>
+        • Recorridos y actualizaciones 2x año<br>
+        • <strong style="color:rgba(176,125,46,.9);">20% descuento en TODOS los terceros</strong>
+      </div>
+
+      <div style="font-size:9px;color:rgba(255,255,255,.32);line-height:1.45;padding:2px 3px;">
+        Para Impacto Vecinal o Zonal selecciona Apertura o Regularización. Nunca se aplican ambas al mismo tiempo.
+      </div>
+
+      <button type="button" onclick="_aplicarPaqueteAutomatico(true)" style="margin-top:2px;width:100%;padding:7px 9px;border-radius:6px;border:1px solid rgba(96,165,250,.28);background:rgba(37,99,235,.10);color:#93c5fd;font-size:10px;font-weight:700;cursor:pointer;">↻ Actualizar conceptos automáticos</button>
     </div>
   </div>
-
   <div class="sb-b">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">
       <div class="sb-l" style="margin-bottom:0;">Área de servicio</div>
@@ -689,22 +713,6 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
     <div class="dup-warn" id="dup-warn">⚠ Este concepto ya fue agregado. ¿Deseas agregarlo de nuevo de todas formas?<br><button onclick="addItForce()" style="margin-top:6px;background:var(--gold);border:none;border-radius:4px;padding:4px 12px;font-size:10px;font-weight:600;color:#fff;cursor:pointer;">Sí, agregar de nuevo</button></div>
   </div>
 
-  <!-- ── CLIENTE DE IGUALA ─────────────────────────────────── -->
-  <div class="sb-b">
-    <div class="sb-l">Tipo de cliente</div>
-    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.75);padding:8px 10px;background:rgba(176,125,46,.1);border-radius:5px;border:1px solid rgba(176,125,46,.3);">
-      <input type="checkbox" id="chk-iguala" onchange="rdDatos()" style="width:14px;height:14px;accent-color:#b07d2e;cursor:pointer;">
-      <span>⭐ Cliente de <strong>Iguala</strong></span>
-    </label>
-    <div id="iguala-info" style="display:none;margin-top:6px;background:rgba(176,125,46,.08);border:1px solid rgba(176,125,46,.2);border-radius:5px;padding:8px 10px;font-size:10px;color:rgba(255,255,255,.5);line-height:1.6;">
-      • Atención personalizada 24/7<br>
-      • Emergencias: verificaciones y operativos<br>
-      • Nulidades hasta 1ª instancia incluidas<br>
-      • Calendario anual de vencimientos en enero<br>
-      • Recorridos y actualizaciones 2x año<br>
-      • <strong style="color:rgba(176,125,46,.9);">20% descuento en TODOS los terceros</strong>
-    </div>
-  </div>
 
   <!-- ── CONCEPTO LIBRE ─────────────────────────────────── -->
   <div class="custom-block">
@@ -1193,10 +1201,20 @@ function getImpacto(){
 function getApertura(){
   const ap=document.getElementById("chk-apertura");
   const re=document.getElementById("chk-regular");
-  if(ap&&ap.checked&&re&&re.checked)return{value:"apertura_regularizacion"};
   if(ap&&ap.checked)return{value:"apertura"};
   if(re&&re.checked)return{value:"regularizacion"};
   return null;
+}
+
+function _seleccionarTipoTramite(tipo,el){
+  const ap=document.getElementById("chk-apertura");
+  const re=document.getElementById("chk-regular");
+  if(el&&el.checked){
+    if(tipo==="apertura" && re)re.checked=false;
+    if(tipo==="regular" && ap)ap.checked=false;
+  }
+  rdDatos();
+  if(_impactoActivo())_aplicarPaqueteAutomatico(false);
 }
 function getTagsClasificacion(){
   const tags=[];
@@ -1267,6 +1285,79 @@ function _areaItem(obj,aKey){
     ambiental:{al:"Ambiental",ab:"ba"}
   }[aKey]||{al:"Giros Mercantiles",ab:"bg"};
   return Object.assign({d:0,t:0,h:0,aKey:aKey,al:meta.al,ab:meta.ab,_autoPack:true},obj);
+}
+
+
+function _m2TarifaImpacto(m2){
+  const n=Number(m2)||0;
+  return n>0?Math.ceil(n-1e-9):0;
+}
+
+function _derechoImpacto2026(tipo,m2,tramite){
+  const n=_m2TarifaImpacto(m2);
+  if(!n || (tipo!=="vecinal"&&tipo!=="zonal") || !tramite)return 0;
+
+  let permiso=0;
+  if(tipo==="vecinal"){
+    if(n<=50) permiso=14277;
+    else if(n<=100) permiso=14277 + (n-50)*286;
+    else permiso=28577 + (n-100)*572;
+  }else{
+    if(n<=50) permiso=28556;
+    else if(n<=100) permiso=28556 + (n-50)*572;
+    else permiso=57156 + (n-100)*1143;
+  }
+
+  const total=tramite==="regularizacion" ? permiso*0.30 : permiso;
+  return Math.round(total*100)/100;
+}
+
+function _esMiguelHidalgo(){
+  const d=_normAuto(document.getElementById("c2")?.value||"");
+  return d.includes("miguel hidalgo");
+}
+
+function _conceptosImpactoEconomicos(tipo,m2){
+  if(tipo!=="vecinal"&&tipo!=="zonal")return [];
+  const tr=(getApertura()||{}).value||"";
+  if(!tr)return [];
+
+  const regular=tr==="regularizacion";
+  const tipoTxt=tipo==="vecinal"?"Vecinal":"Zonal";
+  const m2Tarifa=_m2TarifaImpacto(m2);
+  const derecho=_derechoImpacto2026(tipo,m2,tr);
+
+  const derechos=_areaItem({
+    id:"auto_"+tipo+"_derechos_impacto",
+    s:"Derechos de Impacto "+tipoTxt,
+    n:regular
+      ? "Derechos por Revalidación de Aviso de Impacto "+tipoTxt
+      : "Derechos por Aviso de Impacto "+tipoTxt,
+    d:derecho,
+    detalle:m2Tarifa+" m² · "+(regular?"Revalidación":"Permiso nuevo"),
+    nota:m2Tarifa!==Number(m2)?"Superficie redondeada hacia arriba para el cálculo de derechos":""
+  },"giros");
+
+  let honorarios=0;
+  if(tipo==="zonal"){
+    honorarios=regular?30000:60000;
+  }else{
+    honorarios=regular?(_esMiguelHidalgo()?15000:10000):50000;
+  }
+
+  const hon=_areaItem({
+    id:"auto_"+tipo+"_hon_impacto",
+    s:(regular?"Revalidación":"Apertura")+" Impacto "+tipoTxt,
+    n:regular
+      ? "Honorarios profesionales por revalidación de Aviso de Impacto "+tipoTxt
+      : "Honorarios profesionales por apertura - Aviso de Impacto "+tipoTxt,
+    h:honorarios,
+    nota:(tipo==="vecinal"&&regular&&_esMiguelHidalgo())
+      ? "Tarifa de regularización aplicable a domicilio en Miguel Hidalgo"
+      : ""
+  },"giros");
+
+  return [derechos,hon];
 }
 
 function _vbAutomatico(tipo,m2){
@@ -1367,18 +1458,15 @@ function _aplicarPaqueteAutomatico(mostrarAviso=true){
     p.push(_areaItem({id:"auto_"+tipo+"_predial",s:"Constancias",n:"Constancia de no adeudos predial",d:228},"giros"));
     p.push(_areaItem({id:"auto_"+tipo+"_agua",s:"Constancias",n:"Constancia de no adeudos agua",d:228},"giros"));
   }
-  if(tipo==="zonal"){
-    p.push(_areaItem({id:"auto_zonal_reval",s:"Apertura Zonal",n:"Aviso de revalidación de impacto zonal",h:30000},"giros"));
-  }
   p.push(_vbAutomatico(tipo,m2));
 
   if(tipo==="bajo"){
     p.push(_areaItem({id:"auto_bajo_hon",s:"Apertura Bajo Impacto",n:"Honorarios Profesionales por Apertura de Bajo Impacto",h:25000},"giros"));
   }else if(tipo==="vecinal"){
     p.push(_areaItem({id:"auto_vec_aforo",s:"Apertura Impacto Vecinal",n:"Dictamen de Aforo",d:0,t:0,h:0,nota:"Importe pendiente de definir"},"giros"));
-    p.push(_areaItem({id:"auto_vec_hon",s:"Apertura Impacto Vecinal",n:"Honorarios Profesionales por Apertura",h:50000},"giros"));
+    p.push(..._conceptosImpactoEconomicos(tipo,m2));
   }else{
-    p.push(_areaItem({id:"auto_zon_hon",s:"Apertura Impacto Zonal",n:"Honorarios Profesionales por Apertura",h:60000},"giros"));
+    p.push(..._conceptosImpactoEconomicos(tipo,m2));
     p.push(_areaItem({id:"auto_zon_ssp",s:"Apertura Impacto Zonal",n:"Visto Bueno del Sistema de Seguridad ante SSP",h:20000},"giros"));
     p.push(_areaItem({id:"auto_zon_riesgo",s:"Apertura Impacto Zonal",n:"Dictamen de Consejo de Evaluación de Riesgo",h:25000},"giros"));
   }
@@ -3917,7 +4005,7 @@ function _restaurarSnapshot(s,folio){
   document.getElementById("chk-vecinal").checked=s.impacto==="vecinal";
   document.getElementById("chk-zonal").checked=s.impacto==="zonal";
   document.getElementById("chk-apertura").checked=s.apertura==="apertura"||s.apertura==="apertura_regularizacion";
-  document.getElementById("chk-regular").checked=s.apertura==="regularizacion"||s.apertura==="apertura_regularizacion";
+  document.getElementById("chk-regular").checked=s.apertura==="regularizacion";
   items=s.items?JSON.parse(JSON.stringify(s.items)):[];
   currentFolio=folio;
   document.getElementById("folio").textContent=currentFolio;
