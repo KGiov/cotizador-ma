@@ -595,7 +595,10 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
 <aside class="sb mob-panel active" id="mob-cotizar">
   <div class="sb-h" style="display:flex;align-items:center;justify-content:space-between;">
     <h3>Nueva Cotización</h3>
-    <button onclick="abrirEditorClientes()" title="Editar base de datos de clientes" style="background:rgba(176,125,46,.18);border:1px solid rgba(176,125,46,.35);color:#d4a845;border-radius:5px;padding:4px 9px;font-size:10px;cursor:pointer;letter-spacing:.04em;white-space:nowrap;">✏️ Base de datos</button>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+      <button onclick="abrirModuloCobranza()" title="Módulo de cobranza mensual" style="background:rgba(37,99,235,.18);border:1px solid rgba(96,165,250,.32);color:#93c5fd;border-radius:5px;padding:4px 9px;font-size:10px;cursor:pointer;letter-spacing:.04em;white-space:nowrap;">💰 Cobranza</button>
+      <button onclick="abrirEditorClientes()" title="Editar base de datos de clientes" style="background:rgba(176,125,46,.18);border:1px solid rgba(176,125,46,.35);color:#d4a845;border-radius:5px;padding:4px 9px;font-size:10px;cursor:pointer;letter-spacing:.04em;white-space:nowrap;">✏️ Base de datos</button>
+    </div>
   </div>
 
   <div class="sb-b">
@@ -612,7 +615,8 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
     <div class="sb-l">Datos del cliente</div>
     <div class="sf"><label>Nombre Comercial</label><input id="c1" placeholder="Ej. Restaurante El Patio" oninput="rdDatos();checkBtnGuardarCliente()"></div>
     <div class="sf"><label>Domicilio</label><input id="c2" placeholder="Calle, Colonia, Alcaldía"></div>
-    <div class="sf"><label>Giro / Superficie</label><input id="c3" placeholder="Ej. Bar, Restaurante, 450 m²…"></div>
+    <div class="sf"><label>Giro / Superficie</label><input id="c3" placeholder="Ej. Bar, Restaurante, 450 m²…" oninput="rdDatos();_programarRecalculoPaquete()"></div>
+    <div class="sf"><label>Aforo (personas)</label><input id="c9" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej. 85" oninput="rdDatos();_programarRecalculoPaquete()"></div>
     <div class="sf"><label>Solicitante del Servicio</label><input id="c4" placeholder="Nombre del representante"></div>
     <div class="sf"><label>Teléfono de contacto</label><input id="c5" placeholder="55 XXXX XXXX"></div>
     <div class="sf"><label>Correo electrónico</label><input id="c6" placeholder="correo@empresa.com" type="email"></div>
@@ -636,22 +640,27 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
       </label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:5px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);">
-          <input type="checkbox" id="chk-bajo" onchange="rdDatos()" style="accent-color:#b07d2e;cursor:pointer;">
+          <input type="checkbox" id="chk-bajo" onchange="_seleccionarImpacto('bajo',this)" style="accent-color:#b07d2e;cursor:pointer;">
           Bajo Impacto
         </label>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:5px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);">
-          <input type="checkbox" id="chk-alto" onchange="rdDatos()" style="accent-color:#b07d2e;cursor:pointer;">
-          Alto Impacto
+          <input type="checkbox" id="chk-vecinal" onchange="_seleccionarImpacto('vecinal',this)" style="accent-color:#b07d2e;cursor:pointer;">
+          Impacto Vecinal
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:5px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);">
+          <input type="checkbox" id="chk-zonal" onchange="_seleccionarImpacto('zonal',this)" style="accent-color:#b07d2e;cursor:pointer;">
+          Impacto Zonal
         </label>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:5px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);">
           <input type="checkbox" id="chk-apertura" onchange="rdDatos()" style="accent-color:#b07d2e;cursor:pointer;">
           Apertura
         </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:5px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:rgba(255,255,255,.55);padding:5px 7px;background:rgba(255,255,255,.04);border-radius:5px;border:1px solid rgba(255,255,255,.08);grid-column:1 / -1;">
           <input type="checkbox" id="chk-regular" onchange="rdDatos()" style="accent-color:#b07d2e;cursor:pointer;">
           Regularización
         </label>
       </div>
+      <button type="button" onclick="_abrirConfiguradorPaquete()" style="margin-top:7px;width:100%;padding:7px 9px;border-radius:6px;border:1px solid rgba(96,165,250,.28);background:rgba(37,99,235,.10);color:#93c5fd;font-size:10px;font-weight:700;cursor:pointer;">⚙ Configurar conceptos automáticos</button>
     </div>
   </div>
 
@@ -665,7 +674,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
       <button class="ap" data-a="juridico" onclick="selA('juridico')">Jurídico</button>
       <button class="ap" data-a="obras" onclick="selA('obras')">Obras</button>
       <button class="ap" data-a="protcivil" onclick="selA('protcivil')">Protección<br>Civil</button>
-      <button class="ap ap-full" data-a="ambiental" onclick="selA('ambiental')">Ambiental</button>
+      <button class="ap ap-full" data-a="ambiental" onclick="selAmbiental()">Ambiental</button>
     </div>
   </div>
 
@@ -1176,10 +1185,9 @@ function _sanearCatalogosGuardados(){
   _sanearCatalogoLocal("ma_custom_items");
 }
 function getImpacto(){
-  const bajo=document.getElementById("chk-bajo");
-  const alto=document.getElementById("chk-alto");
-  if(alto&&alto.checked)return{value:"alto"};
-  if(bajo&&bajo.checked)return{value:"bajo"};
+  if(document.getElementById("chk-zonal")?.checked)return{value:"zonal"};
+  if(document.getElementById("chk-vecinal")?.checked)return{value:"vecinal"};
+  if(document.getElementById("chk-bajo")?.checked)return{value:"bajo"};
   return null;
 }
 function getApertura(){
@@ -1193,11 +1201,323 @@ function getApertura(){
 function getTagsClasificacion(){
   const tags=[];
   if(document.getElementById("chk-bajo")&&document.getElementById("chk-bajo").checked)tags.push("Bajo Impacto");
-  if(document.getElementById("chk-alto")&&document.getElementById("chk-alto").checked)tags.push("Alto Impacto");
+  if(document.getElementById("chk-vecinal")&&document.getElementById("chk-vecinal").checked)tags.push("Impacto Vecinal");
+  if(document.getElementById("chk-zonal")&&document.getElementById("chk-zonal").checked)tags.push("Impacto Zonal");
   if(document.getElementById("chk-apertura")&&document.getElementById("chk-apertura").checked)tags.push("Apertura");
   if(document.getElementById("chk-regular")&&document.getElementById("chk-regular").checked)tags.push("Regularización");
   return tags;
 }
+
+// ══════════════════════════════════════════════════════════════
+// PAQUETES AUTOMÁTICOS DE APERTURA / IMPACTO — v32
+// Fuente: Tabulador 2026 + reglas operativas del despacho.
+// ══════════════════════════════════════════════════════════════
+let __autoCfg={
+  suelo:"digital",
+  ambientalTipo:"Manifestación Ambiental Única",
+  ambientalEstudios:["agua","ruidoD","ruidoN","nom43","nra"]
+};
+let __autoTimer=null;
+
+function _normAuto(s){return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();}
+function _m2Actual(){
+  const txt=String(document.getElementById("c3")?.value||"").replace(/,/g,"");
+  let m=txt.match(/(\d+(?:\.\d+)?)\s*(?:m²|m2|mts?\.?|metros?(?:\s+cuadrados)?)/i);
+  if(m)return Number(m[1])||0;
+  // Si c3 solo trae un número, también se acepta.
+  m=txt.trim().match(/^(\d+(?:\.\d+)?)$/);
+  return m?Number(m[1])||0:0;
+}
+function _aforoActual(){return Number(document.getElementById("c9")?.value)||0;}
+
+function _impactoActivo(){return (getImpacto()||{}).value||"";}
+function _seleccionarImpacto(tipo,el){
+  ["bajo","vecinal","zonal"].forEach(k=>{
+    const x=document.getElementById("chk-"+k);
+    if(x&&k!==tipo)x.checked=false;
+  });
+  rdDatos();
+  if(el.checked)_abrirConfiguradorPaquete();
+  else{
+    items=items.filter(x=>!x._autoPack);
+    render();
+  }
+}
+
+function _programarRecalculoPaquete(){
+  clearTimeout(__autoTimer);
+  __autoTimer=setTimeout(()=>{
+    if(_impactoActivo() && _m2Actual()>0 && _aforoActual()>0)_aplicarPaqueteAutomatico(false);
+  },450);
+}
+
+function _areaItem(obj,aKey){
+  const meta={
+    giros:{al:"Giros Mercantiles",ab:"bg"},
+    protcivil:{al:"Protección Civil",ab:"bp"},
+    ambiental:{al:"Ambiental",ab:"ba"}
+  }[aKey]||{al:"Giros Mercantiles",ab:"bg"};
+  return Object.assign({d:0,t:0,h:0,aKey:aKey,al:meta.al,ab:meta.ab,_autoPack:true},obj);
+}
+
+function _vbAutomatico(tipo,m2){
+  let t=0, tLabel="", nota="";
+  if(tipo==="zonal" && m2<100)t=22500;
+  else if(tipo!=="zonal" && m2<100){t=0;nota="No requiere por superficie menor de 100 m²";}
+  else if(m2<=600)t=25500;
+  else if(m2<=1000)t=28000;
+  else {t=0;tLabel="Cotizar con perito";nota="Cotizar con perito";}
+  return _areaItem({
+    id:"auto_"+tipo+"_vb",s:"Apertura "+(tipo==="bajo"?"Bajo Impacto":tipo==="vecinal"?"Impacto Vecinal":"Impacto Zonal"),
+    n:"Visto Bueno de Seguridad y Operación",t:t,tLabel:tLabel,nota:nota,
+    detalle:m2.toLocaleString("es-MX")+" m²"
+  },"giros");
+}
+
+function _sueloAutomatico(tipo){
+  const fisico=__autoCfg.suelo==="fisico";
+  let h=0,hLabel="";
+  if(tipo==="bajo"){hLabel="Variable";}
+  else h=fisico?8000:5000;
+  return _areaItem({
+    id:"auto_"+tipo+"_suelo",s:"Uso de Suelo",n:"Certificado de Uso de Suelo",
+    d:2104,h:h,hLabel:hLabel,
+    detalle:fisico?"Físico":"Digital",
+    nota:tipo==="bajo"?"Honorarios por definir":""
+  },"giros");
+}
+
+function _proteccionCivilAuto(tipo,m2,aforo){
+  // Hasta 250 m² Y hasta 100 personas => Oficio + Medidas.
+  // 251 m² O 101 personas en adelante => Autorización PIPC.
+  if(m2<=250 && aforo<=100){
+    return [
+      _areaItem({id:"auto_"+tipo+"_ono",s:"Protección Civil",n:"Oficio de no obligatoriedad",h:5000,detalle:m2+" m² · Aforo "+aforo},"protcivil"),
+      _areaItem({id:"auto_"+tipo+"_mb",s:"Protección Civil",n:"Medidas básicas de Protección Civil",t:10500,detalle:m2+" m² · Aforo "+aforo},"protcivil")
+    ];
+  }
+  return [
+    _areaItem({
+      id:"auto_"+tipo+"_pipc",s:"Programa Interno PC",n:"Autorización de Programa Interno de Protección Civil",
+      detalle:m2+" m² · Aforo "+aforo,
+      nota:"Pendiente de completar por el responsable de Protección Civil"
+    },"protcivil")
+  ];
+}
+
+function _estudiosAmbientalesAuto(prefix){
+  const arr=[];
+  const sel=new Set(__autoCfg.ambientalEstudios||[]);
+  if(sel.has("agua"))arr.push(_areaItem({id:prefix+"_agua",s:"Estudios",n:"Estudios de Agua",t:18000},"ambiental"));
+  if(sel.has("ruidoD"))arr.push(_areaItem({id:prefix+"_rd",s:"Estudios",n:"Ruido Diurno",t:10700},"ambiental"));
+  if(sel.has("ruidoN"))arr.push(_areaItem({id:prefix+"_rn",s:"Estudios",n:"Ruido Nocturno",t:10700},"ambiental"));
+  if(sel.has("nom43"))arr.push(_areaItem({id:prefix+"_nom43",s:"Estudios",n:"NOM-43 (carbón)",t:10700,nota:"Solo cuando corresponda"},"ambiental"));
+  if(sel.has("nra"))arr.push(_areaItem({id:prefix+"_nra",s:"NRA",n:"Baja de NRA (Número de Registro Ambiental)",t:8000},"ambiental"));
+  return arr;
+}
+function _ambientalAuto(prefix,licenciaZonal){
+  const tipo=__autoCfg.ambientalTipo||"Manifestación Ambiental Única";
+  const base=_areaItem({
+    id:prefix+"_base",s:licenciaZonal?"Licencia Ambiental":"Manifestación Ambiental",
+    n:licenciaZonal?("Licencia Ambiental — "+tipo):tipo,
+    h:18000,
+    detalle:"Base ambiental $18,000 + estudios seleccionados",
+    nota:"50% anticipo y 50% carga en plataforma"
+  },"ambiental");
+  return [base].concat(_estudiosAmbientalesAuto(prefix));
+}
+
+function _dedupeAutoNombres(nuevos){
+  // Reemplaza paquete automático anterior, y evita repetir un concepto que
+  // ya estuviera agregado manualmente a la cotización.
+  const manual=items.filter(x=>!x._autoPack);
+  const names=new Set(manual.map(x=>_normAuto(x.n)));
+  const auto=[];
+  nuevos.forEach(x=>{
+    const n=_normAuto(x.n);
+    if(!names.has(n)){auto.push(x);names.add(n);}
+  });
+  items=manual.concat(auto);
+}
+
+function _aplicarPaqueteAutomatico(mostrarAviso=true){
+  const tipo=_impactoActivo();
+  if(!tipo)return;
+  const m2=_m2Actual(),aforo=_aforoActual();
+  if(!m2 || !aforo){
+    if(mostrarAviso)alert("Captura la superficie en “Giro / Superficie” y el aforo para generar el paquete.");
+    return;
+  }
+  const p=[];
+  p.push(_sueloAutomatico(tipo));
+  if(tipo==="vecinal"||tipo==="zonal"){
+    p.push(_areaItem({id:"auto_"+tipo+"_predial",s:"Constancias",n:"Constancia de no adeudos predial",d:228},"giros"));
+    p.push(_areaItem({id:"auto_"+tipo+"_agua",s:"Constancias",n:"Constancia de no adeudos agua",d:228},"giros"));
+  }
+  if(tipo==="zonal"){
+    p.push(_areaItem({id:"auto_zonal_reval",s:"Apertura Zonal",n:"Aviso de revalidación de impacto zonal",nota:"Sin importe precargado"},"giros"));
+  }
+  p.push(_vbAutomatico(tipo,m2));
+
+  if(tipo==="bajo"){
+    p.push(_areaItem({id:"auto_bajo_hon",s:"Apertura Bajo Impacto",n:"Honorarios Profesionales por Apertura de Bajo Impacto",h:40000},"giros"));
+  }else if(tipo==="vecinal"){
+    p.push(_areaItem({id:"auto_vec_hon",s:"Apertura Impacto Vecinal",n:"Honorarios Profesionales por Apertura",h:50000},"giros"));
+  }else{
+    p.push(_areaItem({id:"auto_zon_hon",s:"Apertura Impacto Zonal",n:"Honorarios Profesionales por Apertura",h:85000},"giros"));
+    p.push(_areaItem({id:"auto_zon_ssp",s:"Apertura Impacto Zonal",n:"Visto Bueno del Sistema de Seguridad ante SSP",h:20000},"giros"));
+    p.push(_areaItem({id:"auto_zon_riesgo",s:"Apertura Impacto Zonal",n:"Dictamen de Consejo de Evaluación de Riesgo",h:25000},"giros"));
+  }
+
+  p.push(_areaItem({id:"auto_"+tipo+"_salud",s:"Apertura",n:"Aviso de Salud",h:8000},"giros"));
+  p.push(..._proteccionCivilAuto(tipo,m2,aforo));
+
+  // En Zonal, la Licencia Ambiental forma parte del paquete y usa el mismo
+  // configurador MAU / Informe + estudios.
+  if(tipo==="zonal")p.push(..._ambientalAuto("auto_zonal_amb",true));
+
+  _dedupeAutoNombres(p);
+  render();
+  if(mostrarAviso && typeof mostrarToastCliente==="function")mostrarToastCliente("✓ Paquete automático actualizado");
+}
+
+function _abrirConfiguradorPaquete(){
+  const tipo=_impactoActivo();
+  if(!tipo)return alert("Selecciona Bajo Impacto, Impacto Vecinal o Impacto Zonal.");
+  let m=document.getElementById("__modal_auto_paquete__");
+  if(!m){
+    m=document.createElement("div");m.id="__modal_auto_paquete__";
+    m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.80);z-index:9900;display:none;align-items:center;justify-content:center;padding:14px;overflow:auto;";
+    m.innerHTML=`
+      <div style="width:100%;max-width:610px;background:#161b24;border:1px solid rgba(255,255,255,.13);border-radius:13px;overflow:hidden;">
+        <div style="padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;gap:12px;">
+          <div><div style="font-size:10px;color:#93c5fd;font-weight:800;letter-spacing:.1em;">CONFIGURAR PAQUETE</div><div id="__auto_titulo__" style="font-size:17px;color:#fff;font-weight:750;margin-top:3px;"></div></div>
+          <button onclick="document.getElementById('__modal_auto_paquete__').style.display='none'" style="width:36px;height:36px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#ddd;border-radius:7px;cursor:pointer;">✕</button>
+        </div>
+        <div style="padding:17px;display:grid;gap:12px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" class="auto-grid">
+            <label style="font-size:10px;color:rgba(255,255,255,.55);display:grid;gap:5px;">SUPERFICIE (m²)
+              <input id="__auto_m2__" type="number" min="1" step="1" style="padding:10px;border-radius:6px;border:1px solid rgba(255,255,255,.13);background:#0d121a;color:#fff;font-size:15px;">
+            </label>
+            <label style="font-size:10px;color:rgba(255,255,255,.55);display:grid;gap:5px;">AFORO
+              <input id="__auto_aforo__" type="number" min="1" step="1" style="padding:10px;border-radius:6px;border:1px solid rgba(255,255,255,.13);background:#0d121a;color:#fff;font-size:15px;">
+            </label>
+          </div>
+          <label style="font-size:10px;color:rgba(255,255,255,.55);display:grid;gap:5px;">CERTIFICADO DE USO DE SUELO
+            <select id="__auto_suelo__" style="padding:10px;border-radius:6px;border:1px solid rgba(255,255,255,.13);background:#0d121a;color:#fff;font-size:13px;">
+              <option value="digital">Digital</option><option value="fisico">Físico</option>
+            </select>
+          </label>
+          <div id="__auto_amb_wrap__" style="display:none;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;">
+            <label style="font-size:10px;color:rgba(255,255,255,.55);display:grid;gap:5px;">LICENCIA / GESTIÓN AMBIENTAL
+              <select id="__auto_amb_tipo__" style="padding:10px;border-radius:6px;border:1px solid rgba(255,255,255,.13);background:#0d121a;color:#fff;font-size:13px;">
+                <option>Manifestación Ambiental Única</option><option>Informe de Desempeño Ambiental</option>
+              </select>
+            </label>
+            <div style="font-size:10px;color:rgba(255,255,255,.45);margin:10px 0 6px;">ESTUDIOS A PRECARGAR (puedes quitar cualquiera después)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:11px;color:#ddd;">
+              <label><input type="checkbox" class="__auto_est" value="agua" checked> Estudios de Agua — $18,000</label>
+              <label><input type="checkbox" class="__auto_est" value="ruidoD" checked> Ruido Diurno — $10,700</label>
+              <label><input type="checkbox" class="__auto_est" value="ruidoN" checked> Ruido Nocturno — $10,700</label>
+              <label><input type="checkbox" class="__auto_est" value="nom43" checked> NOM-43 — $10,700</label>
+              <label><input type="checkbox" class="__auto_est" value="nra" checked> Baja NRA — $8,000</label>
+            </div>
+          </div>
+          <div style="font-size:10px;line-height:1.55;color:rgba(255,255,255,.44);background:#0d121a;border-radius:7px;padding:10px;">
+            Protección Civil: hasta 250 m² <strong>y</strong> hasta 100 personas → Oficio + Medidas básicas. Desde 251 m² <strong>o</strong> 101 personas → Autorización de PIPC.
+          </div>
+        </div>
+        <div style="padding:12px 17px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:flex-end;gap:8px;">
+          <button onclick="document.getElementById('__modal_auto_paquete__').style.display='none'" style="padding:9px 14px;border-radius:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#ddd;cursor:pointer;">Cancelar</button>
+          <button onclick="_confirmarPaqueteAuto()" style="padding:9px 16px;border-radius:6px;border:1px solid #3b82f6;background:#2563eb;color:#fff;font-weight:750;cursor:pointer;">Aplicar conceptos</button>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+    const st=document.createElement("style");st.textContent="@media(max-width:520px){#__modal_auto_paquete__ .auto-grid{grid-template-columns:1fr!important;}}";document.head.appendChild(st);
+  }
+  document.getElementById("__auto_titulo__").textContent=tipo==="bajo"?"Bajo Impacto":tipo==="vecinal"?"Impacto Vecinal":"Impacto Zonal";
+  document.getElementById("__auto_m2__").value=_m2Actual()||"";
+  document.getElementById("__auto_aforo__").value=_aforoActual()||"";
+  document.getElementById("__auto_suelo__").value=__autoCfg.suelo||"digital";
+  document.getElementById("__auto_amb_wrap__").style.display=tipo==="zonal"?"block":"none";
+  document.getElementById("__auto_amb_tipo__").value=__autoCfg.ambientalTipo||"Manifestación Ambiental Única";
+  document.querySelectorAll("#__modal_auto_paquete__ .__auto_est").forEach(x=>x.checked=(__autoCfg.ambientalEstudios||[]).includes(x.value));
+  m.style.display="flex";
+}
+function _confirmarPaqueteAuto(){
+  const m2=Number(document.getElementById("__auto_m2__").value)||0;
+  const aforo=Number(document.getElementById("__auto_aforo__").value)||0;
+  if(!m2||!aforo)return alert("Captura superficie y aforo.");
+  // Mantener Giro y superficie en el mismo campo sin destruir el giro escrito.
+  let c3=document.getElementById("c3"),txt=String(c3.value||"").trim();
+  if(/(\d+(?:\.\d+)?)\s*(?:m²|m2|mts?\.?|metros?)/i.test(txt))txt=txt.replace(/(\d+(?:\.\d+)?)\s*(?:m²|m2|mts?\.?|metros?(?:\s+cuadrados)?)/i,m2+" m²");
+  else txt=(txt?txt+" · ":"")+m2+" m²";
+  c3.value=txt;
+  document.getElementById("c9").value=aforo;
+  __autoCfg.suelo=document.getElementById("__auto_suelo__").value;
+  __autoCfg.ambientalTipo=document.getElementById("__auto_amb_tipo__").value;
+  __autoCfg.ambientalEstudios=Array.from(document.querySelectorAll("#__modal_auto_paquete__ .__auto_est:checked")).map(x=>x.value);
+  document.getElementById("__modal_auto_paquete__").style.display="none";
+  _aplicarPaqueteAutomatico(true);
+  rdDatos();
+}
+
+// ── CONFIGURADOR AMBIENTAL INDEPENDIENTE ──────────────────────
+function selAmbiental(){
+  selA("ambiental");
+  abrirConfiguradorAmbiental();
+}
+function abrirConfiguradorAmbiental(){
+  let m=document.getElementById("__modal_ambiental__");
+  if(!m){
+    m=document.createElement("div");m.id="__modal_ambiental__";
+    m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.80);z-index:9900;display:none;align-items:center;justify-content:center;padding:14px;overflow:auto;";
+    m.innerHTML=`
+      <div style="width:100%;max-width:580px;background:#161b24;border:1px solid rgba(255,255,255,.13);border-radius:13px;overflow:hidden;">
+        <div style="padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;">
+          <div><div style="font-size:10px;color:#86efac;font-weight:800;letter-spacing:.1em;">AMBIENTAL</div><div style="font-size:17px;color:#fff;font-weight:750;margin-top:3px;">Precargar gestión ambiental</div></div>
+          <button onclick="document.getElementById('__modal_ambiental__').style.display='none'" style="width:36px;height:36px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#ddd;border-radius:7px;cursor:pointer;">✕</button>
+        </div>
+        <div style="padding:17px;display:grid;gap:12px;">
+          <label style="font-size:10px;color:rgba(255,255,255,.55);display:grid;gap:5px;">TIPO
+            <select id="__amb_tipo__" style="padding:10px;border-radius:6px;border:1px solid rgba(255,255,255,.13);background:#0d121a;color:#fff;font-size:13px;">
+              <option>Manifestación Ambiental Única</option><option>Informe de Desempeño Ambiental</option>
+            </select>
+          </label>
+          <div style="padding:10px;border-radius:7px;background:#0d121a;color:#d1fae5;font-size:11px;">Costo base: <strong>$18,000.00</strong> en Honorarios + estudios seleccionados en Terceros.<br><span style="color:rgba(209,250,229,.68);">50% anticipo y 50% carga en plataforma.</span></div>
+          <div style="display:grid;gap:7px;font-size:11px;color:#ddd;">
+            <label><input type="checkbox" class="__amb_est" value="agua" checked> Estudios de Agua — $18,000 Terceros</label>
+            <label><input type="checkbox" class="__amb_est" value="ruidoD" checked> Ruido Diurno — $10,700 Terceros</label>
+            <label><input type="checkbox" class="__amb_est" value="ruidoN" checked> Ruido Nocturno — $10,700 Terceros</label>
+            <label><input type="checkbox" class="__amb_est" value="nom43" checked> NOM-43 (carbón) — $10,700 Terceros</label>
+            <label><input type="checkbox" class="__amb_est" value="nra" checked> Baja de NRA — $8,000 Terceros</label>
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,.42);">Se precargan todos; después puedes eliminar de la cotización cualquiera que no corresponda.</div>
+        </div>
+        <div style="padding:12px 17px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:flex-end;gap:8px;">
+          <button onclick="document.getElementById('__modal_ambiental__').style.display='none'" style="padding:9px 14px;border-radius:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#ddd;cursor:pointer;">Solo ver catálogo</button>
+          <button onclick="_confirmarAmbiental()" style="padding:9px 16px;border-radius:6px;border:1px solid #22c55e;background:#15803d;color:#fff;font-weight:750;cursor:pointer;">Agregar selección</button>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+  }
+  document.getElementById("__amb_tipo__").value=__autoCfg.ambientalTipo||"Manifestación Ambiental Única";
+  document.querySelectorAll("#__modal_ambiental__ .__amb_est").forEach(x=>x.checked=(__autoCfg.ambientalEstudios||[]).includes(x.value));
+  m.style.display="flex";
+}
+function _confirmarAmbiental(){
+  __autoCfg.ambientalTipo=document.getElementById("__amb_tipo__").value;
+  __autoCfg.ambientalEstudios=Array.from(document.querySelectorAll("#__modal_ambiental__ .__amb_est:checked")).map(x=>x.value);
+  // Estos no son parte del paquete de impacto: se marcan como autoAmbiental
+  // para poder sustituir una selección ambiental anterior sin tocar el paquete.
+  items=items.filter(x=>!x._autoAmbiental);
+  const nuevos=_ambientalAuto("amb_manual",false).map(x=>{delete x._autoPack;x._autoAmbiental=true;return x;});
+  const existentes=new Set(items.map(x=>_normAuto(x.n)));
+  nuevos.forEach(x=>{if(!existentes.has(_normAuto(x.n))){items.push(x);existentes.add(_normAuto(x.n));}});
+  document.getElementById("__modal_ambiental__").style.display="none";
+  render();
+}
+
 const TAB={
 giros:{l:"Giros Mercantiles",b:"bg",items:[
 {id:"bi01",s:"Apertura Bajo Impacto",n:"Certificado de Uso de Suelo Digital",d:2104,t:0,h:5000},
@@ -1613,7 +1933,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v28 / API v41", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v31 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -1898,7 +2218,7 @@ function fillClient(cl){
 
 function clearClient(){
   document.getElementById("selected-client").style.display="none";
-  ["c1","c2","c3","c4","c5","c6","c7","c8"].forEach(id=>{document.getElementById(id).value="";});
+  ["c1","c2","c3","c4","c5","c6","c7","c8","c9"].forEach(id=>{document.getElementById(id).value="";});
   document.getElementById("wrap-guardar-cliente").style.display="none";
   rdDatos();
 }
@@ -1971,6 +2291,12 @@ function initTiSearch(){
 }
 
 // ── AREA & TRAMITE ─────────────────────────────────────────────
+
+const AUTO_LEGACY_IDS=new Set([
+  "bi01","bi02","bi03","bi04","bi05","bi06","bi08","bi09","bi10","bi11",
+  "v01","v02","v03","v04","v05","v06","v07","v08","v09","v10","v11","v12","v13","v17",
+  "z01","z02","z03","z04","z05","z06","z07","z08","z09"
+]);
 function selA(a){
   curA=a;curT=null;
   document.querySelectorAll(".ap").forEach(b=>b.classList.remove("on"));
@@ -1982,6 +2308,7 @@ function selA(a){
   list.innerHTML="";
   let last=null;
   TAB[a].items.forEach(it=>{
+    if(AUTO_LEGACY_IDS.has(it.id))return;
     const ovr=typeof getOverrideServicio==="function"?getOverrideServicio(it.id):null;
     if(it._deleted||(ovr&&ovr._deleted))return;
     if(it.s!==last){const g=document.createElement("div");g.className="tg";g.textContent=it.s;list.appendChild(g);last=it.s;}
@@ -1990,10 +2317,39 @@ function selA(a){
     const tot=it.d+it.t+it.h;
     const ps=it.v?"Por cotizar":(tot>0?"Ref: "+mxn(tot):(it.nota||""));
     el.innerHTML='<div class="ti-n">'+it.n+'</div><div class="ti-p">'+ps+'</div>';
-    el.onclick=()=>selT(it.id);
+    // Usar directamente el objeto que se está mostrando. Los servicios
+    // agregados o movidos de área pueden existir en la base compartida antes
+    // de que una copia antigua de TAB los vuelva a localizar correctamente.
+    el.onclick=()=>seleccionarServicioVisible(it,a,el);
     list.appendChild(el);
   });
   document.getElementById("dup-warn").style.display="none";
+}
+
+function seleccionarServicioVisible(it,a,el){
+  if(!it)return;
+  curA=a||it.aKey||curA;
+  curT=it.id||null;
+  document.querySelectorAll(".ti").forEach(e=>e.classList.toggle("on",e===el));
+  document.getElementById("dup-warn").style.display="none";
+
+  const ovr=(it.id&&typeof getOverrideServicio==="function")?getOverrideServicio(it.id):null;
+  if(it._deleted||(ovr&&ovr._deleted))return;
+
+  // Normalizar una copia antes de agregarla. Esto evita referencias viejas de
+  // área/subcategoría provenientes de ma_servicios_extra.
+  const svc=_normalizarAreaServicio({...it});
+  svc.d=Number(svc.d)||0; svc.t=Number(svc.t)||0; svc.h=Number(svc.h)||0;
+  svc.al=(TAB[curA]&&TAB[curA].l)||svc.al||"Protección Civil";
+  svc.ab=(TAB[curA]&&TAB[curA].b)||svc.ab||"bp";
+  svc.aKey=curA||svc.aKey;
+
+  const dup=svc.id&&items.some(x=>x&&x.id===svc.id);
+  if(dup){
+    document.getElementById("dup-warn").style.display="block";
+    return;
+  }
+  doAdd(svc);
 }
 
 function selT(id){
@@ -2038,7 +2394,9 @@ function doAdd(it){
     abrirCalculadorPIPC(it);
     return;
   }
-  items.push(Object.assign({},it,{al:TAB[curA].l,ab:TAB[curA].b,aKey:curA}));
+  const areaKey=it.aKey||curA||"custom";
+  const areaObj=TAB[areaKey]||TAB[curA]||{l:it.al||"Personalizados",b:it.ab||"bj"};
+  items.push(Object.assign({},it,{al:it.al||areaObj.l,ab:it.ab||areaObj.b,aKey:areaKey}));
   render();
   curT=null;
   document.querySelectorAll(".ti").forEach(e=>e.classList.remove("on"));
@@ -2289,9 +2647,9 @@ function render(){
       descuentoBadge='<span class="tag-n" style="background:#f0f9f4;color:#2d7a4f;border-color:#a8d5bc;">-20% iguala</span>';
       tOriginalHtml='<div style="font-size:10px;color:#aaa;text-decoration:line-through;margin-top:1px;">'+mxn(it.t)+'</div>';
     }
-    const dsRaw=it.d>0?mxn(it.d):(it.v?"Variable":"—");
-    const tsRaw=tReal>0?mxn(tReal):(it.v?"Variable":"—");
-    const hsRaw=it.h>0?mxn(it.h):(it.v?"Cotizar":"—");
+    const dsRaw=it.dLabel||((it.d>0)?mxn(it.d):(it.v?"Variable":"—"));
+    const tsRaw=it.tLabel||((tReal>0)?mxn(tReal):(it.v?"Variable":"—"));
+    const hsRaw=it.hLabel||((it.h>0)?mxn(it.h):(it.v?"Cotizar":"—"));
     const det=it.detalle?'<div class="cn-d">'+it.detalle+'</div>':"";
     const firmaId="firma_"+i;
     const notaHtml='<span class="tag-n editable-nota" contenteditable="true" data-idx="'+i+'" style="cursor:text;">'+(it.nota||"+ nota")+'</span>';
@@ -2331,7 +2689,11 @@ function render(){
         const raw=el.textContent.replace(/[^0-9]/g,"");
         const val=parseInt(raw)||0;
         // Guardar precio BASE — el render aplica el descuento iguala al mostrar
-        if(!isNaN(idx)&&items[idx])items[idx][tipo]=val;
+        if(!isNaN(idx)&&items[idx]){
+          items[idx][tipo]=val;
+          delete items[idx][tipo+"Label"];
+          items[idx].v=false;
+        }
         render();
       });
       el.addEventListener("keydown",e=>{
@@ -2556,9 +2918,9 @@ function buildPreview(){
       descBadgePv='<span class="pv-tag" style="background:#f0f9f4;color:#2d7a4f;border-color:#a8d5bc;">−20% iguala</span>';
       tOriginalHtmlPv='<div style="font-size:10px;color:#aaa;text-decoration:line-through;margin-top:1px;">'+mxn(it.t)+'</div>';
     }
-    const dsRaw=it.d>0?mxn(it.d):(it.v?"Variable":"—");
-    const tsRaw=tRealPv>0?mxn(tRealPv):(it.v?"Variable":"—");
-    const hsRaw=it.h>0?mxn(it.h):(it.v?"Cotizar":"—");
+    const dsRaw=it.dLabel||((it.d>0)?mxn(it.d):(it.v?"Variable":"—"));
+    const tsRaw=it.tLabel||((tRealPv>0)?mxn(tRealPv):(it.v?"Variable":"—"));
+    const hsRaw=it.hLabel||((it.h>0)?mxn(it.h):(it.v?"Cotizar":"—"));
     const det=it.detalle?'<div class="pv-det">'+it.detalle+'</div>':"";
     const nota='<span class="pv-tag editable-nota-pv" contenteditable="'+editMode+'" data-idx="'+i+'" style="cursor:text;'+(editMode?'':'')+'">'+(it.nota||(editMode?"+ nota":""))+'</span>';
     const firmaId="pvf_"+i;
@@ -2891,7 +3253,7 @@ async function guardarPDFEnFolio(){
   // Guardar snapshot de items y datos del cliente
   folioRegistry[idx].snapshot={
     items:JSON.parse(JSON.stringify(items)),
-    c1:g("c1"),c2:g("c2"),c3:g("c3"),c4:g("c4"),c5:g("c5"),c6:g("c6"),c7:g("c7"),c8:document.getElementById("c8")?document.getElementById("c8").value:"",
+    c1:g("c1"),c2:g("c2"),c3:g("c3"),c4:g("c4"),c5:g("c5"),c6:g("c6"),c7:g("c7"),c8:document.getElementById("c8")?document.getElementById("c8").value:"",c9:document.getElementById("c9")?document.getElementById("c9").value:"",c9:document.getElementById("c9")?document.getElementById("c9").value:"",
     notas:document.getElementById("notas").value.trim(),
     esIguala:document.getElementById("chk-iguala").checked,
     impacto:(getImpacto()||{}).value||null,
@@ -3133,6 +3495,7 @@ async function saveCustomToBase(){
     if(!TAB[area.aKey])TAB[area.aKey]={l:area.al,b:area.ab,items:[]};
     if(!TAB[area.aKey].items.some(x=>x&&x.id===newItem.id))TAB[area.aKey].items.push(newItem);
     _ultimoOk=true;_actualizarPill();
+    if(curA===area.aKey)selA(area.aKey);
     const msg=document.getElementById("custom-saved-msg");msg.style.display="block";setTimeout(()=>msg.style.display="none",3000);
   }catch(e){
     console.error("saveCustomToBase",e);
@@ -3489,7 +3852,7 @@ function editarOrden(idx){
 }
 
 function _restaurarSnapshot(s,folio){
-  ["c1","c2","c3","c4","c5","c6","c7","c8"].forEach(id=>{
+  ["c1","c2","c3","c4","c5","c6","c7","c8","c9"].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.value=s[id]||"";
   });
@@ -3498,7 +3861,8 @@ function _restaurarSnapshot(s,folio){
   document.getElementById("iguala-info").style.display=s.esIguala?"block":"none";
   document.getElementById("chk-nuevo").checked=!!s.esNuevo;
   document.getElementById("chk-bajo").checked=s.impacto==="bajo";
-  document.getElementById("chk-alto").checked=s.impacto==="alto";
+  document.getElementById("chk-vecinal").checked=s.impacto==="vecinal";
+  document.getElementById("chk-zonal").checked=s.impacto==="zonal";
   document.getElementById("chk-apertura").checked=s.apertura==="apertura"||s.apertura==="apertura_regularizacion";
   document.getElementById("chk-regular").checked=s.apertura==="regularizacion"||s.apertura==="apertura_regularizacion";
   items=s.items?JSON.parse(JSON.stringify(s.items)):[];
@@ -3534,10 +3898,10 @@ function limpiar(){
   if(!items.length&&!g("c1"))return;
   if(!confirm("¿Limpiar toda la cotización?"))return;
   items=[];
-  ["c1","c2","c3","c4","c5","c6","c7","c8","notas"].forEach(id=>{document.getElementById(id).value="";});
+  ["c1","c2","c3","c4","c5","c6","c7","c8","c9","notas"].forEach(id=>{document.getElementById(id).value="";});
   document.getElementById("selected-client").style.display="none";
   document.getElementById("chk-nuevo").checked=false;
-  ["chk-bajo","chk-alto","chk-apertura","chk-regular"].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  ["chk-bajo","chk-vecinal","chk-zonal","chk-apertura","chk-regular"].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   modoComplementaria=false;folioBaseComplementaria=null;
   currentFolio=null;
   document.getElementById("folio").textContent=_folioTexto();
@@ -5494,6 +5858,146 @@ function _marcarTocado(folio){if(folio)window._foliosTocados[folio]=Date.now();}
     }
   };
 })();
+
+// ═══════════════════════════════════════════════════════════════
+// MÓDULO DE COBRANZA v29 — Fase 1
+// Consulta _COBRANZA y permite sincronizar / marcar estados.
+// WhatsApp y correo se conectarán en la siguiente fase.
+// ═══════════════════════════════════════════════════════════════
+let __cobData=[];
+
+function _cobMoney(n){return "$"+(Number(n)||0).toLocaleString("es-MX",{minimumFractionDigits:0,maximumFractionDigits:2});}
+function _cobEstadoClass(e){
+  e=String(e||"").toUpperCase();
+  if(e==="PAGADO")return "#4ade80";
+  if(e==="VERIFICAR PAGO"||e==="PAGO REPORTADO")return "#60a5fa";
+  if(e==="PAUSADO")return "#fbbf24";
+  if(e==="ESCALADO")return "#f87171";
+  return "#fca5a5";
+}
+function _cobMesActual(){
+  const d=new Date();
+  return {mes:d.getMonth()+1,anio:d.getFullYear()};
+}
+function abrirModuloCobranza(){
+  let m=document.getElementById("__modal_cobranza__");
+  if(!m){
+    m=document.createElement("div");m.id="__modal_cobranza__";
+    m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9700;display:none;align-items:center;justify-content:center;padding:12px;";
+    m.innerHTML=`
+      <div style="width:min(1180px,100%);height:min(92vh,860px);background:#151922;border:1px solid rgba(255,255,255,.12);border-radius:13px;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#10151e;">
+          <div>
+            <div style="font-size:10px;color:#60a5fa;font-weight:800;letter-spacing:.12em;">COBRANZA MENSUAL</div>
+            <div style="font-size:17px;color:#fff;font-weight:750;margin-top:2px;">Cartera y seguimiento</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.42);margin-top:3px;">Fase 1 · Google Sheets es la fuente de verdad</div>
+          </div>
+          <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+            <select id="__cob_mes__" onchange="cargarCobranza()" style="background:#0d121a;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:6px;padding:8px 9px;font-size:11px;">
+              <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option>
+              <option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option>
+              <option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+            <input id="__cob_anio__" type="number" onchange="cargarCobranza()" style="width:82px;background:#0d121a;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:6px;padding:8px 9px;font-size:11px;">
+            <button onclick="sincronizarCobranzaUI()" style="background:#1d4ed8;border:1px solid #3b82f6;color:#fff;border-radius:6px;padding:8px 11px;font-size:10px;font-weight:700;cursor:pointer;">↻ Sincronizar</button>
+            <button onclick="document.getElementById('__modal_cobranza__').style.display='none'" style="width:36px;height:36px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#ddd;border-radius:7px;cursor:pointer;">✕</button>
+          </div>
+        </div>
+        <div id="__cob_resumen__" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06);"></div>
+        <div style="padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="__cob_buscar__" oninput="renderCobranzaUI()" placeholder="Buscar establecimiento, concepto o contacto…" style="flex:1;min-width:220px;background:#0d121a;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:9px 10px;font-size:11px;">
+          <select id="__cob_estado__" onchange="renderCobranzaUI()" style="background:#0d121a;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:8px 9px;font-size:11px;">
+            <option value="">Todos los estados</option><option>PENDIENTE</option><option>VERIFICAR PAGO</option><option>PAUSADO</option><option>PAGADO</option><option>ESCALADO</option>
+          </select>
+          <select id="__cob_tipo__" onchange="renderCobranzaUI()" style="background:#0d121a;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:8px 9px;font-size:11px;">
+            <option value="">Todos los tipos</option><option>IGUALA</option><option>ASESORÍA ALCALDÍA</option><option>ASESORÍA I. CENTRAL</option><option>ASESORÍA ENSERES</option>
+          </select>
+        </div>
+        <div id="__cob_tabla__" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;"></div>
+      </div>`;
+    document.body.appendChild(m);
+    m.addEventListener("click",e=>{if(e.target===m)m.style.display="none";});
+  }
+  const hoy=_cobMesActual();
+  document.getElementById("__cob_mes__").value=String(hoy.mes);
+  document.getElementById("__cob_anio__").value=String(hoy.anio);
+  m.style.display="flex";
+  cargarCobranza();
+}
+async function cargarCobranza(){
+  if(!SYNC_URL)return;
+  const mes=document.getElementById("__cob_mes__")?.value||"";
+  const anio=document.getElementById("__cob_anio__")?.value||"";
+  const wrap=document.getElementById("__cob_tabla__");
+  if(wrap)wrap.innerHTML='<div style="padding:28px;color:rgba(255,255,255,.45);text-align:center;">Consultando Google Sheets…</div>';
+  try{
+    const r=await fetch(SYNC_URL+"?action=cobranza&mes="+encodeURIComponent(mes)+"&anio="+encodeURIComponent(anio)+"&_="+Date.now());
+    const j=await r.json();
+    if(!j.ok)throw new Error(j.error||"No se pudo leer cobranza");
+    __cobData=Array.isArray(j.items)?j.items:[];
+    const rs=j.resumen||{};
+    const box=document.getElementById("__cob_resumen__");
+    if(box)box.innerHTML=[
+      ["Pendientes",rs.pendientes||0],
+      ["Importe pendiente",_cobMoney(rs.importePendiente||0)],
+      ["Verificar pago",rs.reportados||0],
+      ["Pagados",rs.pagados||0]
+    ].map(x=>'<div style="background:#0e141d;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 12px;"><div style="font-size:9px;color:rgba(255,255,255,.42);text-transform:uppercase;letter-spacing:.07em;">'+x[0]+'</div><div style="font-size:18px;color:#fff;font-weight:750;margin-top:3px;">'+x[1]+'</div></div>').join("");
+    renderCobranzaUI();
+  }catch(e){
+    if(wrap)wrap.innerHTML='<div style="padding:28px;color:#fca5a5;text-align:center;">'+String(e.message||e)+'</div>';
+  }
+}
+function renderCobranzaUI(){
+  const wrap=document.getElementById("__cob_tabla__");if(!wrap)return;
+  const q=String(document.getElementById("__cob_buscar__")?.value||"").trim().toLowerCase();
+  const est=String(document.getElementById("__cob_estado__")?.value||"").toUpperCase();
+  const tipo=String(document.getElementById("__cob_tipo__")?.value||"").toUpperCase();
+  const data=__cobData.filter(x=>{
+    if(est&&String(x.estado||"").toUpperCase()!==est)return false;
+    if(tipo&&String(x.tipo||"").toUpperCase()!==tipo)return false;
+    if(q&&!([x.establecimiento,x.concepto,x.contacto,x.hojaCliente].join(" ").toLowerCase().includes(q)))return false;
+    return true;
+  });
+  if(!data.length){wrap.innerHTML='<div style="padding:28px;color:rgba(255,255,255,.4);text-align:center;">No hay cobros con esos filtros.</div>';return;}
+  wrap.innerHTML=`<table style="width:100%;border-collapse:collapse;min-width:940px;">
+    <thead style="position:sticky;top:0;background:#111722;z-index:2;"><tr>
+      ${["Estado","Tipo","Establecimiento","Concepto","Importe","Canal / contacto","Acciones"].map(x=>'<th style="padding:9px 10px;text-align:left;font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,.09);">'+x+'</th>').join("")}
+    </tr></thead><tbody>
+    ${data.map(x=>`<tr style="border-bottom:1px solid rgba(255,255,255,.05);">
+      <td style="padding:9px 10px;"><span style="font-size:9px;font-weight:800;color:${_cobEstadoClass(x.estado)};">${x.estado||"PENDIENTE"}</span></td>
+      <td style="padding:9px 10px;font-size:9px;color:#93c5fd;">${x.tipo||""}</td>
+      <td style="padding:9px 10px;"><div style="font-size:11px;color:#fff;font-weight:650;">${x.establecimiento||""}</div><div style="font-size:9px;color:rgba(255,255,255,.35);">${x.hojaCliente||""}</div></td>
+      <td style="padding:9px 10px;font-size:10px;color:rgba(255,255,255,.68);max-width:360px;">${x.concepto||""}</td>
+      <td style="padding:9px 10px;font-size:11px;color:#fff;font-weight:700;white-space:nowrap;">${_cobMoney(x.importe)}</td>
+      <td style="padding:9px 10px;"><div style="font-size:9px;color:#d4a845;">${x.medio||"—"}</div><div style="font-size:9px;color:rgba(255,255,255,.42);max-width:220px;">${x.contacto||""}</div></td>
+      <td style="padding:9px 10px;white-space:nowrap;">
+        ${String(x.estado).toUpperCase()!=="PAGADO"?`
+        <button onclick="cobranzaCambiarEstado('${x.id}','VERIFICAR PAGO')" style="padding:5px 7px;border-radius:5px;border:1px solid rgba(96,165,250,.3);background:rgba(37,99,235,.13);color:#93c5fd;font-size:9px;cursor:pointer;">Verificar pago</button>
+        <button onclick="cobranzaCambiarEstado('${x.id}','PAGADO')" style="padding:5px 7px;border-radius:5px;border:1px solid rgba(74,222,128,.3);background:rgba(22,163,74,.13);color:#86efac;font-size:9px;cursor:pointer;">✓ Pagado</button>
+        <button onclick="cobranzaCambiarEstado('${x.id}','PAUSADO')" style="padding:5px 7px;border-radius:5px;border:1px solid rgba(251,191,36,.28);background:rgba(217,119,6,.12);color:#fde68a;font-size:9px;cursor:pointer;">Pausar</button>`:""}
+      </td>
+    </tr>`).join("")}
+    </tbody></table>`;
+}
+async function cobranzaCambiarEstado(id,estado){
+  if(estado==="PAGADO"&&!confirm("¿Alejandra o una persona autorizada ya verificó este pago?\n\nSolo confirma si el pago fue realmente validado. Esto lo marcará como PAGADO definitivo y actualizará Google Sheets."))return;
+  try{
+    const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"cobranzaEstado",id:id,estado:estado,validadoPor:"Módulo web"})});
+    const j=await r.json();if(!j.ok)throw new Error(j.error||"No se pudo actualizar");
+    await cargarCobranza();
+  }catch(e){alert("No se pudo actualizar cobranza: "+String(e.message||e));}
+}
+async function sincronizarCobranzaUI(){
+  try{
+    const mes=document.getElementById("__cob_mes__")?.value||"";
+    const anio=document.getElementById("__cob_anio__")?.value||"";
+    const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"cobranzaSync",mes:mes,anio:anio})});
+    const j=await r.json();if(!j.ok)throw new Error(j.error||"Error");
+    await cargarCobranza();
+  }catch(e){alert("No se pudo sincronizar: "+String(e.message||e));}
+}
+
 </script>
 
 <style>
