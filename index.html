@@ -3744,9 +3744,11 @@ function renderFolioList(){
     const delBtn='<button class="btn-comp" style="background:var(--red-bg);border-color:#f0b8b4;color:var(--red);" onclick="eliminarFolio('+idx+')" title="Eliminar folio">🗑</button>';
     const aliasHtml=f.alias?' <span style="font-size:10px;color:var(--gold);font-weight:600;">'+_escHtml(f.alias)+'</span>':"";
     const aliasBtn='<button class="btn-comp" style="padding:1px 6px;font-size:9px;margin-left:4px;background:var(--surface2);" onclick="editarAliasFolio('+idx+')" title="Agregar o editar el nombre de este folio">✏</button>';
+    const clienteTitulo=_escHtml(f.cliente||"Cliente sin nombre");
+    const asuntoSub=_escHtml(f.asunto||f.giro||"Sin asunto");
     div.innerHTML=
-      '<div><strong style="font-size:11px;">'+f.folio+'</strong>'+aliasHtml+aliasBtn+compBadge+pdfBadge+pcBadge+'<br><span style="font-size:9px;color:var(--ink3);">'+f.fecha+'</span></div>'+
-      '<div><span style="font-size:11px;font-weight:500;">'+f.cliente+'</span><br>'+areasStr+'</div>'+
+      '<div><strong style="font-size:12px;">'+clienteTitulo+'</strong><br><span style="font-size:10px;color:var(--ink2);">'+asuntoSub+'</span></div>'+
+      '<div><strong style="font-size:10px;color:var(--gold);">'+_escHtml(f.folio||"")+'</strong>'+aliasHtml+aliasBtn+compBadge+pdfBadge+pcBadge+'<br><span style="font-size:9px;color:var(--ink3);">'+_escHtml(f.fecha||"")+'</span><br>'+areasStr+'</div>'+
       '<div style="font-size:11px;">'+mxn(f.total||0)+'<br><span style="font-size:9px;color:var(--ink3);">'+(f.impacto||"")+(f.apertura?" · "+f.apertura:"")+'</span></div>'+
       selHtml+
       '<div style="display:flex;gap:4px;flex-wrap:wrap;">'+verBtn+editBtn+compBtn+ecBtn+pagadoBtn+ordenBtn+pcBtn+delBtn+'</div>';
