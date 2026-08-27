@@ -1274,7 +1274,7 @@ function _seleccionarImpacto(tipo,el){
 function _programarRecalculoPaquete(){
   clearTimeout(__autoTimer);
   __autoTimer=setTimeout(()=>{
-    if(_impactoActivo() && _m2Actual()>0 && _aforoActual()>0)_aplicarPaqueteAutomatico(false);
+    if(_impactoActivo() && _m2Actual()>0)_aplicarPaqueteAutomatico(false);
   },450);
 }
 
@@ -1317,6 +1317,154 @@ function _esMiguelHidalgo(){
   return d.includes("miguel hidalgo");
 }
 
+
+function _honorarioImpactoDinamico(tipo,tramite,baseItem){
+  const regular=tramite==="regularizacion";
+  const tipoTxt=tipo==="vecinal"?"Vecinal":tipo==="zonal"?"Zonal":"Bajo Impacto";
+  let h=0, nombre="", nota="";
+
+  if(tipo==="bajo"){
+    h=25000;
+    nombre="Honorarios profesionales por apertura - Bajo Impacto";
+  }else if(tipo==="vecinal"){
+    if(regular){
+      h=_esMiguelHidalgo()?15000:10000;
+      nombre="Honorarios profesionales por revalidación de Aviso de Impacto Vecinal";
+      if(_esMiguelHidalgo())nota="Tarifa de regularización aplicable a domicilio en Miguel Hidalgo";
+    }else{
+      h=50000;
+      nombre="Honorarios profesionales por apertura - Aviso de Impacto Vecinal";
+    }
+  }else if(tipo==="zonal"){
+    if(regular){
+      h=30000;
+      nombre="Honorarios profesionales por revalidación de Aviso de Impacto Zonal";
+    }else{
+      h=60000;
+      nombre="Honorarios profesionales por apertura - Aviso de Impacto Zonal";
+    }
+  }
+
+  const aKey=(baseItem&&baseItem.aKey)||"giros";
+  const areaMeta=TAB[aKey]||TAB.giros||{l:"Giros Mercantiles",b:"bg"};
+  return Object.assign({},baseItem||{},{
+    id:(baseItem&&baseItem.id)||("hon_impacto_"+Date.now()),
+    s:(baseItem&&baseItem.s)||((regular?"Revalidación":"Apertura")+" Impacto "+tipoTxt),
+    n:nombre,
+    d:0,t:0,h:h,v:false,
+    nota:nota,
+    aKey:aKey,
+    al:(baseItem&&baseItem.al)||areaMeta.l,
+    ab:(baseItem&&baseItem.ab)||areaMeta.b,
+    detalle:_m2TarifaImpacto(_m2Actual())+" m² · "+(regular?"Regularización":"Apertura"),
+    _honImpactoDinamico:true
+  });
+}
+
+function _abrirSelectorHonorarioImpacto(baseItem){
+  const m2=_m2Actual();
+  if(!m2){
+    alert('Indique los metros cuadrados en "Giro / Superficie" antes de agregar Honorarios por Apertura.');
+    try{document.getElementById("c3").focus();}catch(e){}
+    return;
+  }
+
+  let modal=document.getElementById("__modal_hon_impacto__");
+  if(!modal){
+    modal=document.createElement("div");
+    modal.id="__modal_hon_impacto__";
+    modal.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:9999;display:none;align-items:center;justify-content:center;padding:14px;";
+    modal.innerHTML=`
+      <div style="width:100%;max-width:470px;background:#161b24;border:1px solid rgba(255,255,255,.13);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4);">
+        <div style="padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.08);">
+          <div style="font-size:10px;color:#93c5fd;font-weight:800;letter-spacing:.1em;">HONORARIOS POR IMPACTO</div>
+          <div style="font-size:16px;color:#fff;font-weight:700;margin-top:3px;">Seleccione el tipo de impacto</div>
+          <div id="__hon_m2_txt__" style="font-size:10px;color:rgba(255,255,255,.42);margin-top:4px;"></div>
+        </div>
+        <div style="padding:17px;display:grid;gap:12px;">
+          <label style="font-size:10px;color:rgba(255,255,255,.5);display:grid;gap:5px;">TIPO DE IMPACTO
+            <select id="__hon_tipo__" style="padding:10px;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:#0d121a;color:#fff;">
+              <option value="bajo">Bajo Impacto</option>
+              <option value="vecinal">Impacto Vecinal</option>
+              <option value="zonal">Impacto Zonal</option>
+            </select>
+          </label>
+          <label style="font-size:10px;color:rgba(255,255,255,.5);display:grid;gap:5px;">TRÁMITE
+            <select id="__hon_tramite__" style="padding:10px;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:#0d121a;color:#fff;">
+              <option value="apertura">Apertura</option>
+              <option value="regularizacion">Regularización / Revalidación</option>
+            </select>
+          </label>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5;">
+            El sistema cambiará automáticamente el nombre y el importe conforme al tipo seleccionado.
+          </div>
+        </div>
+        <div style="padding:12px 17px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:flex-end;gap:8px;">
+          <button type="button" onclick="document.getElementById('__modal_hon_impacto__').style.display='none'" style="padding:9px 13px;border-radius:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#ddd;cursor:pointer;">Cancelar</button>
+          <button type="button" onclick="_confirmarHonorarioImpacto()" style="padding:9px 15px;border-radius:6px;border:1px solid #3b82f6;background:#2563eb;color:#fff;font-weight:700;cursor:pointer;">Agregar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+
+  modal.__baseItem=JSON.parse(JSON.stringify(baseItem||{}));
+  document.getElementById("__hon_m2_txt__").textContent="Superficie detectada: "+_m2TarifaImpacto(m2)+" m²";
+
+  const tipoActivo=_impactoActivo();
+  if(tipoActivo)document.getElementById("__hon_tipo__").value=tipoActivo;
+  const tr=(getApertura()||{}).value;
+  if(tr)document.getElementById("__hon_tramite__").value=tr;
+
+  modal.style.display="flex";
+}
+
+function _confirmarHonorarioImpacto(){
+  const modal=document.getElementById("__modal_hon_impacto__");
+  const tipo=document.getElementById("__hon_tipo__").value;
+  const tramite=document.getElementById("__hon_tramite__").value;
+
+  // Reflejar lo seleccionado también en las casillas del sistema.
+  ["bajo","vecinal","zonal"].forEach(k=>{
+    const x=document.getElementById("chk-"+k); if(x)x.checked=(k===tipo);
+  });
+  const ap=document.getElementById("chk-apertura"), re=document.getElementById("chk-regular");
+  if(ap)ap.checked=tramite==="apertura";
+  if(re)re.checked=tramite==="regularizacion";
+
+  const it=_honorarioImpactoDinamico(tipo,tramite,modal.__baseItem||{});
+  items.push(it);
+  modal.style.display="none";
+  rdDatos();
+  render();
+  curT=null;
+  document.querySelectorAll(".ti").forEach(e=>e.classList.remove("on"));
+}
+
+function _resolverHonorarioAperturaAlAgregar(it){
+  const m2=_m2Actual();
+  if(!m2){
+    alert('Indique los metros cuadrados en "Giro / Superficie" antes de agregar Honorarios por Apertura.');
+    try{document.getElementById("c3").focus();}catch(e){}
+    return true;
+  }
+
+  const tipo=_impactoActivo();
+  const tramite=(getApertura()||{}).value||"";
+
+  // Si falta Tipo de Impacto o Apertura/Regularización, preguntar.
+  if(!tipo || !tramite){
+    _abrirSelectorHonorarioImpacto(it);
+    return true;
+  }
+
+  items.push(_honorarioImpactoDinamico(tipo,tramite,it));
+  render();
+  curT=null;
+  document.querySelectorAll(".ti").forEach(e=>e.classList.remove("on"));
+  document.getElementById("dup-warn").style.display="none";
+  return true;
+}
+
 function _conceptosImpactoEconomicos(tipo,m2){
   if(tipo!=="vecinal"&&tipo!=="zonal")return [];
   const tr=(getApertura()||{}).value||"";
@@ -1338,24 +1486,13 @@ function _conceptosImpactoEconomicos(tipo,m2){
     nota:m2Tarifa!==Number(m2)?"Superficie redondeada hacia arriba para el cálculo de derechos":""
   },"giros");
 
-  let honorarios=0;
-  if(tipo==="zonal"){
-    honorarios=regular?30000:60000;
-  }else{
-    honorarios=regular?(_esMiguelHidalgo()?15000:10000):50000;
-  }
-
-  const hon=_areaItem({
+  const hon=_honorarioImpactoDinamico(tipo,tr,{
     id:"auto_"+tipo+"_hon_impacto",
     s:(regular?"Revalidación":"Apertura")+" Impacto "+tipoTxt,
-    n:regular
-      ? "Honorarios profesionales por revalidación de Aviso de Impacto "+tipoTxt
-      : "Honorarios profesionales por apertura - Aviso de Impacto "+tipoTxt,
-    h:honorarios,
-    nota:(tipo==="vecinal"&&regular&&_esMiguelHidalgo())
-      ? "Tarifa de regularización aplicable a domicilio en Miguel Hidalgo"
-      : ""
-  },"giros");
+    aKey:"giros",al:"Giros Mercantiles",ab:"bg",
+    _autoPack:true
+  });
+  hon._autoPack=true;
 
   return [derechos,hon];
 }
@@ -1431,10 +1568,23 @@ function _ambientalAuto(prefix,licenciaZonal){
   return [base].concat(_estudiosAmbientalesAuto(prefix));
 }
 
+function _esHonorarioAperturaGenericoNombre(nombre){
+  const n=_normAuto(nombre);
+  return n.includes("honorarios") &&
+         (n.includes("apertura") || n.includes("regularizacion") || n.includes("revalidacion")) &&
+         !n.includes("aviso de impacto") &&
+         !n.includes("bajo impacto");
+}
+
 function _dedupeAutoNombres(nuevos){
-  // Reemplaza paquete automático anterior, y evita repetir un concepto que
-  // ya estuviera agregado manualmente a la cotización.
-  const manual=items.filter(x=>!x._autoPack);
+  // Reemplaza paquete automático anterior y elimina un honorario genérico
+  // si ya corresponde generar el honorario específico Vecinal/Zonal.
+  const tipo=_impactoActivo();
+  const manual=items.filter(x=>{
+    if(x._autoPack)return false;
+    if((tipo==="vecinal"||tipo==="zonal") && _esHonorarioAperturaGenericoNombre(x.n))return false;
+    return true;
+  });
   const names=new Set(manual.map(x=>_normAuto(x.n)));
   const auto=[];
   nuevos.forEach(x=>{
@@ -2494,6 +2644,10 @@ function addItForce(){
 function doAdd(it){
   if(it && it.pipcCalc){
     abrirCalculadorPIPC(it);
+    return;
+  }
+  if(it && _esHonorarioAperturaGenericoNombre(it.n)){
+    _resolverHonorarioAperturaAlAgregar(it);
     return;
   }
   const areaKey=it.aKey||curA||"custom";
@@ -3599,6 +3753,11 @@ function addCustomItem(){
     ab: area.ab,
     aKey: area.aKey
   };
+  if(_esHonorarioAperturaGenericoNombre(it.n)){
+    clearCustomForm();
+    _resolverHonorarioAperturaAlAgregar(it);
+    return;
+  }
   items.push(it);
   render();
   clearCustomForm();
