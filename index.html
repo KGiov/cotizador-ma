@@ -1154,7 +1154,10 @@ function _fixTextoUTF8(v){
     [/f\?sico/gi,'físico'],[/f\?sica/gi,'física'],[/el\?ctrica/gi,'eléctrica'],
     [/t\?cnico/gi,'técnico'],[/t\?cnica/gi,'técnica'],[/n\?mero/gi,'número'],
     [/m\?ximo/gi,'máximo'],[/m\?xima/gi,'máxima'],[/m\?nimo/gi,'mínimo'],[/m\?nima/gi,'mínima'],
-    [/c\?digo/gi,'código'],[/v\?a/gi,'vía'],[/tr\?mite/gi,'trámite'],[/tr\?mites/gi,'trámites']
+    [/c\?digo/gi,'código'],[/v\?a/gi,'vía'],[/tr\?mite/gi,'trámite'],[/tr\?mites/gi,'trámites'],
+    [/jurÃ.?dico/gi,'Jurídico'],[/jurÃ.?dica/gi,'Jurídica'],
+    [/jurÃdico/gi,'Jurídico'],[/jurÃdica/gi,'Jurídica'],
+    [/jurÃ­dico/gi,'Jurídico'],[/jurÃ­dica/gi,'Jurídica']
   ];
   for(const [a,b] of reps) s=s.replace(a,b);
   try{s=s.normalize('NFC');}catch(e){}
@@ -2218,7 +2221,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v50 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v51 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -5804,9 +5807,18 @@ function confirmarAutorizacion(idx){
 
 function _nombreOrden(f){
   const items=(f.snapshot&&f.snapshot.items)||[];
-  const areas=[...new Set(items.filter(it=>it._aut!==false).map(it=>it.al).filter(Boolean))];
+  const areas=[...new Set(
+    items
+      .filter(it=>it._aut!==false)
+      .map(it=>_fixTextoUTF8(it.al||"").trim())
+      .filter(Boolean)
+  )];
+  const cliente=_fixTextoUTF8(f.cliente||f.folio||"Orden de Servicio").trim();
   const areasTxt=areas.length?" - "+areas.join(" y "):"";
-  return (f.cliente||f.folio)+areasTxt+".pdf";
+  return (cliente+areasTxt)
+    .replace(/[\\/:*?"<>|]/g,"-")
+    .replace(/\s+/g," ")
+    .trim()+".pdf";
 }
 function _ordenServicioHTML(f){
   const s0=f.snapshot||{}, o0=f._orden||{};
