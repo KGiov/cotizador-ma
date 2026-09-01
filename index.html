@@ -178,6 +178,7 @@ td{padding:11px 10px;vertical-align:top;}
 .tc-n{font-size:9px;color:rgba(255,255,255,.2);margin-top:3px;}
 
 /* OTHERS */
+.vigencia-cot{margin-top:10px;margin-bottom:8px;font-size:11px;font-weight:700;color:var(--ink2);text-align:left;}
 .nota-iva{margin-top:14px;padding:10px 14px;background:var(--blue-bg);border:1px solid #c8dcf5;border-radius:var(--rs);font-size:11px;color:var(--blue);line-height:1.6;}
 .banco{margin-top:14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:14px 18px;}
 .banco-t{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px;}
@@ -369,6 +370,7 @@ body.pdf-neutro .pv-firma-sq .firma-label{visibility:hidden!important;}
 .tc-pv-ag{color:#fff;font-size:22px;}
 .tc-pv-n{font-size:8px;color:rgba(255,255,255,.2);margin-top:2px;}
 
+.pv-vigencia{margin-top:10px;margin-bottom:7px;font-size:9px;font-weight:700;color:#4a5066;}
 .pv-nota-iva{margin-top:12px;padding:8px 12px;background:#eff5fd;border:1px solid #c8dcf5;border-radius:5px;font-size:9px;color:#2563a8;line-height:1.6;}
 .pv-banco{margin-top:12px;background:#f8f9fb;border:1px solid #e2e5ec;border-radius:5px;padding:12px 16px;}
 .pv-banco-t{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8890a4;margin-bottom:8px;}
@@ -805,6 +807,8 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
       <div class="tc"><div class="tc-l">Total Estimado</div><div class="tc-a g" id="tg">$0</div><div class="tc-n">Sin IVA</div></div>
     </div>
 
+    <div class="vigencia-cot" id="vigencia-cot" style="display:none">Esta cotización estará vigente solo por 20 días.</div>
+
     <div class="nota-iva" id="niva" style="display:none">
       <strong>Nota*</strong> Los costos de terceros y honorarios profesionales <strong>NO incluyen IVA</strong>; en caso de requerir factura se deberá considerar el incremento de dicho impuesto. Cualquier gasto para agilizar trámites se pondrá a consideración del cliente previamente.
     </div>
@@ -883,11 +887,13 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
     </div>
     <input type="search" id="folio-search" oninput="renderFolioList()" placeholder="🔎 Buscar por folio, nombre, cliente, giro, estatus…" autocomplete="off"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:-3px 0 10px;">
 <button type="button" onclick="_abrirDashboardCotizaciones()" class="btn-comp" style="padding:7px 10px;background:#111827;color:#fff;border-color:#111827;">📊 Análisis / Pendientes</button>
+<button type="button" id="btn-folios-activos" onclick="_cambiarVistaArchivo(false)" class="btn-comp" style="padding:7px 10px;background:#b07d2e;color:#fff;border-color:#b07d2e;">📂 Activas <span id="cnt-folios-activos"></span></button>
+<button type="button" id="btn-folios-archivados" onclick="_cambiarVistaArchivo(true)" class="btn-comp" style="padding:7px 10px;background:#f3f4f6;color:#4b5563;border-color:#d1d5db;">📦 Archivadas <span id="cnt-folios-archivados"></span></button>
 <span style="font-size:8px;color:var(--ink3);">Sin autorizar:</span>
 <span style="font-size:8px;color:var(--ink3);">⬜ 0–3</span>
 <span style="font-size:8px;color:var(--ink3);">gris 4–6</span>
 <span style="font-size:8px;color:var(--ink3);">🟨 7–11</span>
-<span style="font-size:8px;color:var(--ink3);">🟥 12+</span>
+<span style="font-size:8px;color:var(--ink3);">🟥 12+</span><span style="font-size:8px;color:#b91c1c;font-weight:700;">❗ +20 días = vigencia superada</span>
 </div>
     <div id="folios-list">
       <div style="font-size:11px;color:var(--ink3);font-style:italic;text-align:center;padding:12px;">Genera tu primera cotización para ver el historial aquí.</div>
@@ -1050,6 +1056,8 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
     <!-- Totales -->
     <div class="tots-pv" id="pv-tots"></div>
 
+    <div class="pv-vigencia">Esta cotización estará vigente solo por 20 días.</div>
+
     <!-- Nota IVA -->
     <div class="pv-nota-iva"><strong>Nota*</strong> Los costos de terceros y honorarios profesionales <strong>NO incluyen IVA</strong>; en caso de requerir factura se deberá considerar el incremento de dicho impuesto. Cualquier gasto para agilizar trámites se pondrá a consideración del cliente previamente.</div>
 
@@ -1138,7 +1146,15 @@ function _fixTextoUTF8(v){
     [/actualizaci['’´`]n/gi,'actualización'],[/protecci['’´`]n/gi,'protección'],
     [/renovaci['’´`]n/gi,'renovación'],[/revalidaci['’´`]n/gi,'revalidación'],
     [/modificaci['’´`]n/gi,'modificación'],[/asesor['’´`]a/gi,'asesoría'],
-    [/m\?(?=[\s,.;)\]\/]|$)/gi,'m²']
+    [/m\?(?=[\s,.;)\]\/]|$)/gi,'m²'],
+    [/ubicaci\?n/gi,'ubicación'],[/clasificaci\?n/gi,'clasificación'],
+    [/jur\?dico/gi,'jurídico'],[/jur\?dica/gi,'jurídica'],[/administraci\?n/gi,'administración'],
+    [/expedici\?n/gi,'expedición'],[/evaluaci\?n/gi,'evaluación'],[/operaci\?n/gi,'operación'],
+    [/manifestaci\?n/gi,'manifestación'],[/ambientaci\?n/gi,'ambientación'],
+    [/f\?sico/gi,'físico'],[/f\?sica/gi,'física'],[/el\?ctrica/gi,'eléctrica'],
+    [/t\?cnico/gi,'técnico'],[/t\?cnica/gi,'técnica'],[/n\?mero/gi,'número'],
+    [/m\?ximo/gi,'máximo'],[/m\?xima/gi,'máxima'],[/m\?nimo/gi,'mínimo'],[/m\?nima/gi,'mínima'],
+    [/c\?digo/gi,'código'],[/v\?a/gi,'vía'],[/tr\?mite/gi,'trámite'],[/tr\?mites/gi,'trámites']
   ];
   for(const [a,b] of reps) s=s.replace(a,b);
   try{s=s.normalize('NFC');}catch(e){}
@@ -2202,7 +2218,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v46 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v50 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -3958,7 +3974,7 @@ function editarAliasFolio(idx){
 // ── Búsqueda en el registro de folios ─────────────────────────
 function _normTxt(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
 function _folioCoincide(f,term){
-  const blob=_normTxt([f.folio,f.alias,f.cliente,f.giro,f.asunto,f.status,f.fecha,(f.areas||[]).join(" ")].join(" | "));
+  const blob=_normTxt([f.folio,f.alias,f.cliente,f.giro,f.asunto,f.status,f._archived?"archivada":"activa",f.fecha,(f.areas||[]).join(" ")].join(" | "));
   return term.split(/\s+/).every(t=>blob.includes(t));
 }
 function _folioCreadoMs(f){
@@ -3997,26 +4013,59 @@ function _semPendienteVista(f){
   if(dias<=11)return{dias,color:"#f2c94c",texto:dias+" días sin autorizar"};
   return{dias,color:"#dc2626",texto:dias+" días sin autorizar"};
 }
+let _vistaFoliosArchivados=false;
+
+function _actualizarContadoresArchivo(){
+  const activos=(folioRegistry||[]).filter(f=>f&&!f._deleted&&!f._archived).length;
+  const archivados=(folioRegistry||[]).filter(f=>f&&!f._deleted&&!!f._archived).length;
+  const a=document.getElementById("cnt-folios-activos");
+  const b=document.getElementById("cnt-folios-archivados");
+  if(a)a.textContent="("+activos+")";
+  if(b)b.textContent="("+archivados+")";
+}
+function _cambiarVistaArchivo(archivadas){
+  _vistaFoliosArchivados=!!archivadas;
+  const a=document.getElementById("btn-folios-activos");
+  const b=document.getElementById("btn-folios-archivados");
+  if(a){
+    a.style.background=_vistaFoliosArchivados?"#f3f4f6":"#b07d2e";
+    a.style.color=_vistaFoliosArchivados?"#4b5563":"#fff";
+    a.style.borderColor=_vistaFoliosArchivados?"#d1d5db":"#b07d2e";
+  }
+  if(b){
+    b.style.background=_vistaFoliosArchivados?"#374151":"#f3f4f6";
+    b.style.color=_vistaFoliosArchivados?"#fff":"#4b5563";
+    b.style.borderColor=_vistaFoliosArchivados?"#374151":"#d1d5db";
+  }
+  renderFolioList();
+}
+
 function renderFolioList(){
   if(typeof MODO_PC!=="undefined"&&MODO_PC){renderFolioListPC();return;}
   const list=document.getElementById("folios-list");
   const _inp=document.getElementById("folio-search");
   const term=_normTxt(_inp?_inp.value.trim():"");
-  if(!folioRegistry.filter(f=>!f._deleted).length){
-    list.innerHTML='<div style="font-size:11px;color:var(--ink3);font-style:italic;text-align:center;padding:12px;">Genera tu primera cotización para ver el historial aquí.</div>';
+  _actualizarContadoresArchivo();
+  const disponibles=(folioRegistry||[]).filter(f=>f&&!f._deleted&&(!!f._archived===_vistaFoliosArchivados));
+  if(!disponibles.length){
+    list.innerHTML=_vistaFoliosArchivados
+      ? '<div style="font-size:11px;color:var(--ink3);font-style:italic;text-align:center;padding:16px;">📦 No hay cotizaciones archivadas.</div>'
+      : '<div style="font-size:11px;color:var(--ink3);font-style:italic;text-align:center;padding:12px;">Genera tu primera cotización para ver el historial aquí.</div>';
     return;
   }
   list.innerHTML="";
   let _mostrados=0;
   _foliosOrdenados().forEach(({f,idx})=>{
     if(f._deleted)return;
+    if(!!f._archived!==_vistaFoliosArchivados)return;
     if(term&&!_folioCoincide(f,term))return;
     _mostrados++;
     const isAut=f.status==="autorizada";
     const div=document.createElement("div");
-    div.className="folio-row status-"+f.status;
-    const _sem=_semPendienteVista(f);
+    div.className="folio-row status-"+f.status+(f._archived?" archived":"");
+    const _sem=f._archived?{dias:null,color:"transparent",texto:""}:_semPendienteVista(f);
     if(_sem.dias!==null){div.style.borderRight="7px solid "+_sem.color;div.title=_sem.texto;}
+    const _vencida20=_sem.dias!==null&&_sem.dias>20;
     const compBadge=f.isComplementaria?'<span class="comp-badge">COMP</span>':"";
     const areasStr=f.areas&&f.areas.length?'<span style="font-size:9px;color:var(--ink3);">'+f.areas.join(", ")+'</span>':"";
     const statusOptions=["pendiente","autorizada","rechazada","recotizar"];
@@ -4026,6 +4075,8 @@ function renderFolioList(){
         statusOptions.map(s=>'<option value="'+s+'"'+(f.status===s?" selected":"")+'>'+s.charAt(0).toUpperCase()+s.slice(1)+'</option>').join("")+
       '</select>';
     const pdfBadge=f.tienePDF?'<span style="font-size:9px;background:#eff5fd;color:#2563a8;border:1px solid #c8dcf5;padding:1px 7px;border-radius:20px;font-weight:600;margin-left:5px;">PDF</span>':"";
+    const archivedBadge=f._archived?'<span class="folio-badge fb-archivado" style="margin-left:5px;">📦 Archivada</span>':"";
+    const vencida20Badge=_vencida20?'<span title="Vigencia superada: esta cotización tiene más de 20 días" style="display:inline-flex;align-items:center;justify-content:center;margin-left:5px;width:18px;height:18px;border-radius:50%;background:#dc2626;color:#fff;font-size:12px;font-weight:900;line-height:1;vertical-align:middle;">!</span>':"";
     const pcBadge=(f._aportePC&&!f._aportePC.integrado)?'<span title="Protección Civil ya cargó sus conceptos" style="margin-left:5px;vertical-align:middle;display:inline-block;">'+_pcIcon(14)+'</span>':"";
     const pcBtn=(f._aportePC&&!f._aportePC.integrado)?'<button class="btn-comp" style="background:#fff4e5;border-color:#f7c98b;color:#c05c10;font-weight:700;" onclick="integrarAportePC('+idx+')" title="Integrar los conceptos que cargó Protección Civil">📥 PC</button>':"";
     const verBtn=f.snapshot?'<button class="btn-comp" style="background:var(--blue-bg);border-color:#c8dcf5;color:var(--blue);" onclick="cargarOrden('+idx+')">👁 Ver</button>':"";
@@ -4034,6 +4085,9 @@ function renderFolioList(){
     const ecBtn=isAut?'<button class="btn-comp" style="background:#eff5fd;border-color:#c8dcf5;color:#2563a8;" onclick="actualizarAmbos('+idx+')" title="Actualizar estado de cuenta y actividades">📊 EC</button>':"";
     const pagadoBtn=isAut?'<button class="btn-comp" style="background:#f0f9f4;border-color:#bbf7d0;color:#166534;" onclick="marcarPagadoEC('+idx+')" title="Registrar y distribuir un pago">💰 Registrar pago</button>':"";
     const ordenBtn=isAut?'<button class="btn-comp" style="background:#fdf6ec;border-color:#e8d5b0;color:#b07d2e;" onclick="verOrdenServicio('+idx+')" title="Ver / descargar la Orden de Servicio">📄 Orden</button>':"";
+    const archiveBtn=f._archived
+      ? '<button class="btn-comp" style="background:#eef2ff;border-color:#c7d2fe;color:#3730a3;font-weight:700;" onclick="archivarFolio('+idx+')" title="Regresar esta cotización al seguimiento activo">📂 Restaurar</button>'
+      : '<button class="btn-comp" style="background:#f3f4f6;border-color:#d1d5db;color:#4b5563;" onclick="archivarFolio('+idx+')" title="Archivar sin borrar y conservar su estatus">📦 Archivar</button>';
     const delBtn='<button class="btn-comp" style="background:var(--red-bg);border-color:#f0b8b4;color:var(--red);" onclick="eliminarFolio('+idx+')" title="Eliminar folio">🗑</button>';
     const aliasHtml=f.alias?' <span style="font-size:10px;color:var(--gold);font-weight:600;">'+_escHtml(f.alias)+'</span>':"";
     const aliasBtn='<button class="btn-comp" style="padding:1px 6px;font-size:9px;margin-left:4px;background:var(--surface2);" onclick="editarAliasFolio('+idx+')" title="Agregar o editar el nombre de este folio">✏</button>';
@@ -4043,12 +4097,16 @@ function renderFolioList(){
     const fechaMod=_escHtml(_fechaModificacionVista(f));
     div.innerHTML=
       '<div><strong style="font-size:12px;">'+clienteTitulo+'</strong><br><span style="font-size:10px;color:var(--ink2);">'+asuntoSub+'</span></div>'+
-      '<div><strong style="font-size:10px;color:var(--gold);">'+_escHtml(f.folio||"")+'</strong>'+aliasHtml+aliasBtn+compBadge+pdfBadge+pcBadge+
+      '<div><strong style="font-size:10px;color:var(--gold);">'+_escHtml(f.folio||"")+'</strong>'+aliasHtml+aliasBtn+compBadge+pdfBadge+pcBadge+archivedBadge+vencida20Badge+
       '<br><span style="font-size:9px;color:var(--ink3);"><strong>Elaboración:</strong> '+fechaElab+'</span>'+
       '<br><span style="font-size:9px;color:var(--ink3);"><strong>Últ. modificación:</strong> '+fechaMod+'</span><br>'+areasStr+'</div>'+
       '<div style="font-size:11px;">'+mxn(f.total||0)+'<br><span style="font-size:9px;color:var(--ink3);">'+(f.impacto||"")+(f.apertura?" · "+f.apertura:"")+'</span></div>'+
       selHtml+
-      '<div style="display:flex;gap:4px;flex-wrap:wrap;">'+verBtn+editBtn+compBtn+ecBtn+pagadoBtn+ordenBtn+pcBtn+delBtn+'</div>';
+      '<div style="display:flex;gap:4px;flex-wrap:wrap;">'+
+        (f._archived
+          ? verBtn+archiveBtn+delBtn
+          : verBtn+editBtn+compBtn+ecBtn+pagadoBtn+ordenBtn+pcBtn+archiveBtn+delBtn)+
+      '</div>';
     list.appendChild(div);
   });
   if(!_mostrados){
@@ -4091,11 +4149,16 @@ function cambiarStatus(idx, val){
 function archivarFolio(idx){
   const f=folioRegistry[idx];
   if(!f)return;
+  if(!f._archived){
+    const est=(f.status||"pendiente").charAt(0).toUpperCase()+(f.status||"pendiente").slice(1);
+    if(!confirm("¿Archivar "+f.folio+" — "+(f.cliente||"cliente")+"?\n\nDejará de aparecer en el seguimiento y en los honorarios pendientes.\nSu estatus actual ("+est+") se conservará y podrás restaurarla después."))return;
+  }
   f._archived=!f._archived;
   f._m=_mNuevo();
   _guardarRegistroLocal();
+  _actualizarContadoresArchivo();
   renderFolioList();
-  const msg=f._archived?"📦 Cotización archivada":"📂 Cotización desarchivada";
+  const msg=f._archived?"📦 Cotización archivada — estatus conservado":"📂 Cotización restaurada al seguimiento";
   const t=document.createElement("div");
   t.style.cssText="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#374151;color:#fff;padding:10px 22px;border-radius:20px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);";
   t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);
@@ -5746,37 +5809,49 @@ function _nombreOrden(f){
   return (f.cliente||f.folio)+areasTxt+".pdf";
 }
 function _ordenServicioHTML(f){
-  const s=f.snapshot,o=f._orden;
+  const s0=f.snapshot||{}, o0=f._orden||{};
+  // La Orden de Servicio puede recuperar datos históricos guardados con
+  // codificación dañada. Se sanea una copia para no alterar el registro.
+  const s=_sanearObjetoTexto(s0);
+  const o=_sanearObjetoTexto(o0);
+  const cliente=_fixTextoUTF8(f.cliente||"Por definir");
+  const folio=_fixTextoUTF8(f.folio||"");
   const logoEl=document.querySelector(".hdr-l img");
   const logoSrc=logoEl?logoEl.src:"";
-  const mapsUrl="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(o.ubicacion||f.cliente||"");
+  const mapsUrl="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(o.ubicacion||cliente||"");
   const ubiHtml=String(o.ubicacion||"").trim()
-    ?'<a href="'+mapsUrl+'" target="_blank" style="color:#2563a8;text-decoration:underline;">'+_escHtml(o.ubicacion)+' 📍</a>'
+    ?'<a href="'+mapsUrl+'" target="_blank" style="color:#2563a8;text-decoration:underline;">'+_escHtml(_fixTextoUTF8(o.ubicacion))+' 📍</a>'
     :"Por definir";
-  const filas=s.items.filter(it=>it._aut!==false).map(it=>{
+
+  const filas=(s.items||[]).filter(it=>it._aut!==false).map(it=>{
+    const area=_fixTextoUTF8(it.al||"");
+    const nombre=_fixTextoUTF8(it.n||"");
+    const sub=_fixTextoUTF8(it.s||"");
     return '<tr>'+
-      '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#b07d2e;white-space:nowrap;">'+_escHtml(it.al||"")+'</td>'+
-      '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:11px;color:#1a1f2e;">'+_escHtml(it.n)+(it.s?'<br><span style="font-size:9px;color:#8890a4;">'+_escHtml(it.s)+'</span>':"")+'</td>'+
+      '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#b07d2e;white-space:nowrap;">'+_escHtml(area)+'</td>'+
+      '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:11px;color:#1a1f2e;">'+_escHtml(nombre)+(sub?'<br><span style="font-size:9px;color:#8890a4;">'+_escHtml(sub)+'</span>':"")+'</td>'+
       '</tr>';
   }).join("");
+
   const dato=(l,v)=>'<div style="display:flex;gap:6px;font-size:10.5px;margin-bottom:4px;"><span style="font-weight:700;color:#8a6520;white-space:nowrap;">'+l+':</span><span style="color:#1a1f2e;">'+v+'</span></div>';
-  return '<div style="padding:34px 40px;background:#fff;">'+
+
+  const html='<div style="padding:34px 40px;background:#fff;">'+
     '<div style="display:flex;align-items:center;gap:16px;border-bottom:2px solid #1a1f2e;padding-bottom:14px;margin-bottom:18px;">'+
       (logoSrc?'<img src="'+logoSrc+'" style="height:52px;">':"")+
       '<div><div style="font-family:Georgia,serif;font-size:17px;font-weight:700;color:#1a1f2e;">M&amp;A Asesores Legales de Establecimientos Mercantiles, S.C.</div>'+
       '<div style="font-size:10px;color:#8890a4;margin-top:2px;">Abogados de la Industria Gastronómica, Entretenimiento y de la Construcción · Ciudad de México</div></div>'+
     '</div>'+
     '<div style="text-align:center;font-family:Georgia,serif;font-size:19px;letter-spacing:.14em;color:#1a1f2e;margin-bottom:4px;">ORDEN DE SERVICIO</div>'+
-    '<div style="text-align:center;font-size:11px;color:#8890a4;margin-bottom:16px;">'+_escHtml(f.folio)+' · '+_escHtml(o.fecha||"")+'</div>'+
+    '<div style="text-align:center;font-size:11px;color:#8890a4;margin-bottom:16px;">'+_escHtml(folio)+' · '+_escHtml(_fixTextoUTF8(o.fecha||""))+'</div>'+
     '<div style="background:#fdf6ec;border:1px solid #e8d5b0;border-radius:8px;padding:14px 18px;margin-bottom:18px;">'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 24px;">'+
-      dato("Establecimiento",_escHtml(f.cliente||"Por definir"))+
-      dato("Clasificación",_escHtml(o.clasificacion||"Por definir"))+
-      dato("Giro",_escHtml(_pd(o.giro)))+
-      dato("Superficie",o.superficie?_escHtml(o.superficie)+" m²":"Por definir")+
-      dato("Contacto",_escHtml(_pd(o.contacto)))+
-      dato("Celular",_escHtml(_pd(o.celular)))+
-      dato("Aforo",_escHtml(_pd(o.aforo)))+
+      dato("Establecimiento",_escHtml(cliente))+
+      dato("Clasificación",_escHtml(_fixTextoUTF8(o.clasificacion||"Por definir")))+
+      dato("Giro",_escHtml(_fixTextoUTF8(_pd(o.giro))))+
+      dato("Superficie",o.superficie?_escHtml(_fixTextoUTF8(o.superficie))+" m²":"Por definir")+
+      dato("Contacto",_escHtml(_fixTextoUTF8(_pd(o.contacto))))+
+      dato("Celular",_escHtml(_fixTextoUTF8(_pd(o.celular))))+
+      dato("Aforo",_escHtml(_fixTextoUTF8(_pd(o.aforo))))+
       '</div>'+
       '<div style="margin-top:6px;">'+dato("Ubicación",ubiHtml)+'</div>'+
     '</div>'+
@@ -5787,6 +5862,8 @@ function _ordenServicioHTML(f){
       '</tr></thead><tbody>'+filas+'</tbody></table>'+
     '<div style="margin-top:22px;font-size:9px;color:#8890a4;text-align:center;">Esta orden contiene únicamente los conceptos autorizados.</div>'+
   '</div>';
+
+  return _fixTextoUTF8(html);
 }
 
 // Visualizador de la Orden de Servicio: se VE en pantalla y desde ahí se
@@ -5829,7 +5906,10 @@ function verOrdenServicio(idx){
   // Construir el contenido en el siguiente frame (deja respirar al navegador)
   setTimeout(()=>{
     const paper=document.getElementById("os-paper");
-    if(paper)paper.innerHTML=_ordenServicioHTML(f);
+    if(paper){
+      paper.innerHTML=_ordenServicioHTML(f);
+      _normalizarDOMUTF8(paper);
+    }
   },60);
 }
 
@@ -5865,9 +5945,14 @@ function imprimirOrden(idx){
   if(!f||!f._orden)return;
   const w=window.open("","_blank");
   if(!w){alert("Tu navegador bloqueó la ventana. Permite ventanas emergentes para este sitio.");return;}
-  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Orden de Servicio - '+_escHtml(f.cliente||f.folio)+'</title></head><body style="margin:0;font-family:Arial,sans-serif;">'+_ordenServicioHTML(f)+'</body></html>');
+  const htmlOrden=_ordenServicioHTML(f);
+  w.document.open("text/html","replace");
+  w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Orden de Servicio - '+_escHtml(_fixTextoUTF8(f.cliente||f.folio))+'</title></head><body style="margin:0;font-family:Arial,sans-serif;">'+htmlOrden+'</body></html>');
   w.document.close();
-  setTimeout(()=>{w.focus();w.print();},400);
+  setTimeout(()=>{
+    try{_normalizarDOMUTF8(w.document.body);}catch(e){}
+    w.focus();w.print();
+  },400);
 }
 
 // ── Compartir la Orden de Servicio por WhatsApp ──
@@ -6375,7 +6460,7 @@ function _cerrarDashboardCotizaciones(){const m=document.getElementById("cotDash
 function _renderDashboardCotizaciones(){
  const desde=document.getElementById("cdashDesde")?.value||"",hasta=document.getElementById("cdashHasta")?.value||"",cliente=(document.getElementById("cdashCliente")?.value||"").trim().toLowerCase(),est=document.getElementById("cdashEstatus")?.value||"todos",ord=document.getElementById("cdashOrden")?.value||"fecha_desc";
  const d0=desde?new Date(desde+"T00:00:00"):null,d1=hasta?new Date(hasta+"T23:59:59"):null;
- let rows=(folioRegistry||[]).filter(r=>r&&!r._deleted).map(r=>Object.assign({},r,{_p:_cdPartes(r)})).filter(r=>{const fd=_cdFecha(r.fecha);if(d0&&(!fd||fd<d0))return false;if(d1&&(!fd||fd>d1))return false;if(cliente&&!String(r.cliente||"").toLowerCase().includes(cliente))return false;if(est!=="todos"&&String(r.status||"pendiente").toLowerCase()!==est)return false;return true;});
+ let rows=(folioRegistry||[]).filter(r=>r&&!r._deleted&&!r._archived).map(r=>Object.assign({},r,{_p:_cdPartes(r)})).filter(r=>{const fd=_cdFecha(r.fecha);if(d0&&(!fd||fd<d0))return false;if(d1&&(!fd||fd>d1))return false;if(cliente&&!String(r.cliente||"").toLowerCase().includes(cliente))return false;if(est!=="todos"&&String(r.status||"pendiente").toLowerCase()!==est)return false;return true;});
  if(ord==="hon_desc")rows.sort((a,b)=>b._p.h-a._p.h);else if(ord==="total_desc")rows.sort((a,b)=>_cdN(b.total||b._p.total)-_cdN(a.total||a._p.total));else if(ord==="cliente_asc")rows.sort((a,b)=>String(a.cliente||"").localeCompare(String(b.cliente||""),"es"));else rows.sort((a,b)=>(_cdFecha(b.fecha)||0)-(_cdFecha(a.fecha)||0));
  let sd=0,st=0,sh=0,sna=0;rows.forEach(r=>{sd+=r._p.d;st+=r._p.t;sh+=r._p.h;if(String(r.status||"pendiente").toLowerCase()!=="autorizada")sna+=r._p.h;});
  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};set("cdashCount",rows.length.toLocaleString("es-MX"));set("cdashD",_cdMoney(sd));set("cdashT",_cdMoney(st));set("cdashHon",_cdMoney(sh));set("cdashNoGanado",_cdMoney(sna));
