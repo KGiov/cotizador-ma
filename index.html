@@ -2218,7 +2218,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v44 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v45 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -3918,7 +3918,6 @@ async function guardarFolioEnRegistry(){
   const entry={
     folio:currentFolio,
     fecha:new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}),
-    fechaModificacion:new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}),
     cliente:n||"(sin nombre)",
     domicilio:dom,giro,areas,
     asunto:document.getElementById("c8")?document.getElementById("c8").value.trim():"",
@@ -3937,8 +3936,6 @@ async function guardarFolioEnRegistry(){
     if(previo.tienePDF)entry.tienePDF=previo.tienePDF;
     if(previo.snapshot)entry.snapshot=previo.snapshot;
     if(previo.fechaCreacion)entry.fechaCreacion=previo.fechaCreacion; // conservar fecha original
-    if(previo.fechaElaboracion)entry.fechaElaboracion=previo.fechaElaboracion;
-    else if(previo.fecha)entry.fechaElaboracion=previo.fecha;
     if(previo._archived!==undefined)entry._archived=previo._archived;
     if(previo._facturado)entry._facturado=previo._facturado;
     if(previo._folioFactura)entry._folioFactura=previo._folioFactura;
@@ -3956,9 +3953,6 @@ async function guardarFolioEnRegistry(){
     if(previo._anticipoMonto)entry._anticipoMonto=previo._anticipoMonto;
   }
   if(!entry.fechaCreacion)entry.fechaCreacion=new Date().toISOString();
-  if(!entry.fechaElaboracion){
-    entry.fechaElaboracion=new Date(entry.fechaCreacion).toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
-  }
   folioRegistry=folioRegistry.filter(f=>f.folio!==currentFolio);
   folioRegistry.unshift(entry);
   _guardarRegistroLocal();
@@ -3991,47 +3985,48 @@ function _folioCreadoMs(f){
 function _foliosOrdenados(){
   return (folioRegistry||[]).map((f,idx)=>({f,idx})).sort((a,b)=>_folioCreadoMs(b.f)-_folioCreadoMs(a.f));
 }
-function _fechaMxDesdeMs(ms){
+function _fechaFolioDesdeTimestamp(ms){
   const n=Number(ms);
   if(!Number.isFinite(n)||n<=0)return "";
   const d=new Date(n);
   if(Number.isNaN(d.getTime()))return "";
   return d.toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
 }
-function _fechaElaboracionFolio(f){
-  if(f&&f.fechaElaboracion)return f.fechaElaboracion;
+function _fechaElaboracionVista(f){
+  // fechaCreacion es el sello original ya existente en _REGISTRO.
   if(f&&f.fechaCreacion){
     const t=Date.parse(f.fechaCreacion);
-    if(Number.isFinite(t))return _fechaMxDesdeMs(t);
+    if(Number.isFinite(t))return _fechaFolioDesdeTimestamp(t);
   }
+  // Compatibilidad con registros antiguos.
   return (f&&f.fecha)||"";
 }
-function _fechaModificacionFolio(f){
-  if(f&&f.fechaModificacion)return f.fechaModificacion;
-  const porM=_fechaMxDesdeMs(f&&f._m);
-  return porM||((f&&f.fecha)||"");
+function _fechaModificacionVista(f){
+  // _m ya es el sello de última modificación utilizado por la sincronización.
+  const x=_fechaFolioDesdeTimestamp(f&&f._m);
+  return x||((f&&f.fecha)||"");
 }
-function _parseFechaMx(txt){
+function _parseFechaVista(txt){
   const m=String(txt||"").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(!m)return null;
   const d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));
   d.setHours(0,0,0,0);
   return d;
 }
-function _diasSinAutorizar(f){
+function _antiguedadPendienteVista(f){
   if(!f || f.status==="autorizada")return null;
-  const d=_parseFechaMx(_fechaElaboracionFolio(f));
+  const d=_parseFechaVista(_fechaElaboracionVista(f));
   if(!d)return null;
   const hoy=new Date(); hoy.setHours(0,0,0,0);
-  return Math.max(0,Math.floor((hoy-d)/86400000));
+  return Math.max(0,Math.floor((hoy.getTime()-d.getTime())/86400000));
 }
-function _colorAntiguedadFolio(f){
-  const dias=_diasSinAutorizar(f);
-  if(dias===null)return {color:"transparent",dias:null,label:""};
-  if(dias<=3)return {color:"#ffffff",dias,label:dias+" día"+(dias===1?"":"s")+" sin autorizar"};
-  if(dias<=6)return {color:"#9ca3af",dias,label:dias+" días sin autorizar"};
-  if(dias<=11)return {color:"#f2c94c",dias,label:dias+" días sin autorizar"};
-  return {color:"#dc2626",dias,label:dias+" días sin autorizar"};
+function _colorPendienteVista(f){
+  const dias=_antiguedadPendienteVista(f);
+  if(dias===null)return {dias:null,color:"transparent",texto:""};
+  if(dias<=3)return {dias,color:"#ffffff",texto:dias+" día"+(dias===1?"":"s")+" sin autorizar"};
+  if(dias<=6)return {dias,color:"#9ca3af",texto:dias+" días sin autorizar"};
+  if(dias<=11)return {dias,color:"#f2c94c",texto:dias+" días sin autorizar"};
+  return {dias,color:"#dc2626",texto:dias+" días sin autorizar"};
 }
 function renderFolioList(){
   if(typeof MODO_PC!=="undefined"&&MODO_PC){renderFolioListPC();return;}
@@ -4051,10 +4046,11 @@ function renderFolioList(){
     const isAut=f.status==="autorizada";
     const div=document.createElement("div");
     div.className="folio-row status-"+f.status;
-    const antig=_colorAntiguedadFolio(f);
-    div.style.position="relative";
-    div.style.borderRight=antig.dias===null?"":("7px solid "+antig.color);
-    if(antig.label)div.title=antig.label;
+    const antig=_colorPendienteVista(f);
+    if(antig.dias!==null){
+      div.style.borderRight="7px solid "+antig.color;
+      div.title=antig.texto;
+    }
     const compBadge=f.isComplementaria?'<span class="comp-badge">COMP</span>':"";
     const areasStr=f.areas&&f.areas.length?'<span style="font-size:9px;color:var(--ink3);">'+f.areas.join(", ")+'</span>':"";
     const statusOptions=["pendiente","autorizada","rechazada","recotizar"];
@@ -4077,8 +4073,8 @@ function renderFolioList(){
     const aliasBtn='<button class="btn-comp" style="padding:1px 6px;font-size:9px;margin-left:4px;background:var(--surface2);" onclick="editarAliasFolio('+idx+')" title="Agregar o editar el nombre de este folio">✏</button>';
     const clienteTitulo=_escHtml(f.cliente||"Cliente sin nombre");
     const asuntoSub=_escHtml(f.asunto||f.giro||"Sin asunto");
-    const fechaElab=_escHtml(_fechaElaboracionFolio(f));
-    const fechaMod=_escHtml(_fechaModificacionFolio(f));
+    const fechaElab=_escHtml(_fechaElaboracionVista(f));
+    const fechaMod=_escHtml(_fechaModificacionVista(f));
     div.innerHTML=
       '<div><strong style="font-size:12px;">'+clienteTitulo+'</strong><br><span style="font-size:10px;color:var(--ink2);">'+asuntoSub+'</span></div>'+
       '<div><strong style="font-size:10px;color:var(--gold);">'+_escHtml(f.folio||"")+'</strong>'+aliasHtml+aliasBtn+compBadge+pdfBadge+pcBadge+
