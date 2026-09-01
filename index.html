@@ -857,7 +857,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
         <label style="font-size:11px;color:var(--ink3);cursor:pointer;display:flex;align-items:center;gap:5px;user-select:none;">
           <input type="checkbox" id="chk-show-archived" onchange="renderFolioList()" style="accent-color:#b07d2e;cursor:pointer;"> Mostrar archivadas
         </label>
-        <button onclick="exportarAutorizadasAExcel()" style="background:#eff5fd;border:1px solid #c8dcf5;border-radius:var(--rs);padding:5px 12px;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#2563a8;cursor:pointer;">⬇ Exportar autorizadas</button>
+        <button onclick="exportarCotizacionesXLSX()" style="background:#eff5fd;border:1px solid #c8dcf5;border-radius:var(--rs);padding:5px 12px;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#2563a8;cursor:pointer;">⬇ Exportar cotizaciones .xlsx</button>
       </div>
     </div>
     <!-- PANEL EXCEL INTEGRATION (oculto: todo se escribe directo en Google Sheets) -->
@@ -2221,7 +2221,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v51 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v52 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -4186,36 +4186,217 @@ function marcarFacturado(idx){
   document.body.appendChild(t);setTimeout(()=>t.remove(),3000);
 }
 
-function exportarAutorizadasAExcel(){
-  const aut=folioRegistry.filter(f=>!f._deleted&&f.status==="autorizada");
-  if(!aut.length){alert("No hay cotizaciones con estatus AUTORIZADA para exportar.");return;}
-  const payload={
-    exportado:new Date().toLocaleString("es-MX"),
-    cotizaciones:aut.map(f=>({
-      folio:f.folio,
-      fecha:f.fecha,
-      fechaCreacion:f.fechaCreacion,
-      cliente:f.cliente,
-      domicilio:f.domicilio,
-      giro:f.giro,
-      areas:f.areas,
-      total:f.total,
-      _facturado:f._facturado||false,
-      _folioFactura:f._folioFactura||null,
-      _fechaFactura:f._fechaFactura||null,
-      items:f.snapshot?f.snapshot.items:[]
-    }))
-  };
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;a.download="cotizaciones_autorizadas_"+new Date().toISOString().slice(0,10)+".json";
-  document.body.appendChild(a);a.click();setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},500);
-  const t=document.createElement("div");
-  t.style.cssText="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#2563a8;color:#fff;padding:12px 24px;border-radius:20px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);max-width:320px;text-align:center;";
-  t.innerHTML="⬇ Exportadas "+aut.length+" cotización(es) autorizadas.<br><span style=\"font-size:10px;opacity:.8;\">Usa el script Python para actualizar el Excel.</span>";
-  document.body.appendChild(t);setTimeout(()=>t.remove(),4000);
+function _xlsxTexto(v){
+  if(v==null)return "";
+  let x=_fixTextoUTF8(String(v));
+  // Mantener siempre como texto y evitar que Excel interprete contenido del usuario como fórmula.
+  if(/^[=+\-@]/.test(x))x="'"+x;
+  return x;
 }
+function _xlsxFechaDesdeMx(v){
+  if(v instanceof Date && !Number.isNaN(v.getTime()))return v;
+  const txt=String(v||"").trim();
+  let m=txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m)return new Date(+m[3],+m[2]-1,+m[1]);
+  const t=Date.parse(txt);
+  return Number.isFinite(t)?new Date(t):null;
+}
+function _xlsxFechaElab(f){
+  if(f&&f.fechaCreacion){
+    const t=Date.parse(f.fechaCreacion);
+    if(Number.isFinite(t))return new Date(t);
+  }
+  return _xlsxFechaDesdeMx(f&&f.fecha);
+}
+function _xlsxFechaMod(f){
+  const n=Number(f&&f._m);
+  if(Number.isFinite(n)&&n>0)return new Date(n);
+  return _xlsxFechaDesdeMx(f&&f.fecha);
+}
+function _xlsxDiasDesdeElab(f){
+  const d=_xlsxFechaElab(f);
+  if(!d)return "";
+  const a=new Date(d);a.setHours(0,0,0,0);
+  const h=new Date();h.setHours(0,0,0,0);
+  return Math.max(0,Math.floor((h-a)/86400000));
+}
+function _xlsxEstadoLegible(f){
+  const e=String((f&&f.status)||"pendiente").toLowerCase();
+  return e==="autorizada"?"Autorizada":e==="rechazada"?"Rechazada":e==="recotizar"?"Recotizar":"Pendiente";
+}
+function _xlsxPartesFolio(f){
+  const arr=(f&&f.snapshot&&Array.isArray(f.snapshot.items))?f.snapshot.items:[];
+  let d=0,t=0,h=0;
+  arr.forEach(it=>{
+    d+=Number(it.d)||0;
+    t+=Number(it.t)||0;
+    h+=Number(it.h)||0;
+  });
+  return {d:d,t:t,h:h,total:d+t+h};
+}
+function _xlsxAreasFolio(f){
+  const arr=(f&&f.snapshot&&Array.isArray(f.snapshot.items))?f.snapshot.items:[];
+  const a=[...new Set(arr.map(it=>_xlsxTexto(it.al||"").replace(/^'/,"")).filter(Boolean))];
+  return a.join(", ");
+}
+function _xlsxEstiloHoja(ws, widths, moneyCols, dateCols){
+  ws["!cols"]=widths.map(w=>({wch:w}));
+  const rg=XLSX.utils.decode_range(ws["!ref"]||"A1:A1");
+  (moneyCols||[]).forEach(c=>{
+    for(let r=1;r<=rg.e.r;r++){
+      const cell=ws[XLSX.utils.encode_cell({r:r,c:c})];
+      if(cell&&typeof cell.v==="number")cell.z='$#,##0.00';
+    }
+  });
+  (dateCols||[]).forEach(c=>{
+    for(let r=1;r<=rg.e.r;r++){
+      const cell=ws[XLSX.utils.encode_cell({r:r,c:c})];
+      if(cell&&cell.v instanceof Date){cell.t="d";cell.z="dd/mm/yyyy";}
+    }
+  });
+  ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rg.e.r,c:rg.e.c}})};
+  ws["!freeze"]={xSplit:0,ySplit:1,topLeftCell:"A2",activePane:"bottomLeft",state:"frozen"};
+}
+function _filasDashboardActuales(incluirArchivadas){
+  const desde=document.getElementById("cdashDesde")?.value||"";
+  const hasta=document.getElementById("cdashHasta")?.value||"";
+  const cliente=(document.getElementById("cdashCliente")?.value||"").trim().toLowerCase();
+  const est=document.getElementById("cdashEstatus")?.value||"todos";
+  const d0=desde?new Date(desde+"T00:00:00"):null;
+  const d1=hasta?new Date(hasta+"T23:59:59"):null;
+  return (folioRegistry||[])
+    .filter(r=>r&&!r._deleted&&(incluirArchivadas||!r._archived))
+    .map(r=>Object.assign({},r,{_p:_xlsxPartesFolio(r)}))
+    .filter(r=>{
+      const fd=_xlsxFechaDesdeMx(r.fecha);
+      if(d0&&(!fd||fd<d0))return false;
+      if(d1&&(!fd||fd>d1))return false;
+      if(cliente&&!_fixTextoUTF8(String(r.cliente||"")).toLowerCase().includes(cliente))return false;
+      const status=String(r.status||"pendiente").toLowerCase();
+      if(est==="no_autorizadas"&&status==="autorizada")return false;
+      if(est!=="todos"&&est!=="no_autorizadas"&&status!==est)return false;
+      return true;
+    });
+}
+function exportarCotizacionesXLSX(opts){
+  if(typeof XLSX==="undefined"){
+    alert("No se pudo cargar el módulo de Excel. Revisa tu conexión y vuelve a intentar.");
+    return;
+  }
+  opts=opts||{};
+  const desdeDashboard=!!document.getElementById("cotDashModal");
+  const incluirArchivadas=desdeDashboard?!!document.getElementById("cdashArchivadas")?.checked:!!opts.incluirArchivadas;
+  let rows=desdeDashboard?_filasDashboardActuales(incluirArchivadas):
+    (folioRegistry||[]).filter(f=>f&&!f._deleted&&!f._archived).map(f=>Object.assign({},f,{_p:_xlsxPartesFolio(f)}));
+
+  if(!rows.length){
+    alert("No hay cotizaciones que coincidan con los filtros para exportar.");
+    return;
+  }
+
+  const cab=[
+    "Fecha de elaboración","Última modificación","Días desde elaboración","Vigencia",
+    "Folio","Cliente","Asunto","Estatus","Archivada","Áreas",
+    "Tesorería","Terceros","Honorarios","Total","Honorarios no autorizados",
+    "Domicilio","Giro / Superficie"
+  ];
+  const data=[cab];
+  rows.forEach(f=>{
+    const p=f._p||_xlsxPartesFolio(f);
+    const dias=_xlsxDiasDesdeElab(f);
+    const est=String(f.status||"pendiente").toLowerCase();
+    data.push([
+      _xlsxFechaElab(f),_xlsxFechaMod(f),dias,
+      dias===""?"":(dias>20?"Vigencia superada":"Vigente"),
+      _xlsxTexto(f.folio),_xlsxTexto(f.cliente),_xlsxTexto(f.asunto||f.asuntoOrden||f.giro||""),
+      _xlsxEstadoLegible(f),f._archived?"Sí":"No",_xlsxAreasFolio(f),
+      p.d,p.t,p.h,Number(f.total)||p.total,est==="autorizada"?0:p.h,
+      _xlsxTexto(f.domicilio||f.snapshot?.c2||""),_xlsxTexto(f.giro||f.snapshot?.c3||"")
+    ]);
+  });
+
+  const ws=XLSX.utils.aoa_to_sheet(data,{cellDates:true});
+  _xlsxEstiloHoja(ws,[17,17,18,18,18,30,32,14,11,28,14,14,14,14,22,38,34],[10,11,12,13,14],[0,1]);
+
+  // Segunda hoja: desglose de conceptos, incluyendo expresamente autorizados y no autorizados.
+  const dc=[[
+    "Folio","Cliente","Estatus cotización","Archivada","Área","Concepto","Subcategoría / detalle",
+    "Concepto autorizado","Tesorería","Terceros","Honorarios","Total concepto","Nota"
+  ]];
+  rows.forEach(f=>{
+    const items=(f.snapshot&&Array.isArray(f.snapshot.items))?f.snapshot.items:[];
+    items.forEach(it=>{
+      const d=Number(it.d)||0,t=Number(it.t)||0,h=Number(it.h)||0;
+      dc.push([
+        _xlsxTexto(f.folio),_xlsxTexto(f.cliente),_xlsxEstadoLegible(f),f._archived?"Sí":"No",
+        _xlsxTexto(it.al||""),_xlsxTexto(it.n||""),_xlsxTexto(it.s||it.detalle||""),
+        it._aut===false?"No":"Sí",d,t,h,d+t+h,_xlsxTexto(it.nota||"")
+      ]);
+    });
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(dc,{cellDates:true});
+  _xlsxEstiloHoja(ws2,[18,30,16,11,22,45,40,19,14,14,14,15,40],[8,9,10,11],[]);
+
+  // Resumen del mismo conjunto exportado.
+  let sd=0,st=0,sh=0,sna=0,aut=0,noaut=0,arch=0;
+  rows.forEach(f=>{
+    const p=f._p||_xlsxPartesFolio(f),e=String(f.status||"pendiente").toLowerCase();
+    sd+=p.d;st+=p.t;sh+=p.h;
+    if(e==="autorizada")aut++;else{sna+=p.h;noaut++;}
+    if(f._archived)arch++;
+  });
+  const filtros=[];
+  if(desdeDashboard){
+    const v=id=>document.getElementById(id)?.value||"";
+    if(v("cdashDesde"))filtros.push(["Desde",v("cdashDesde")]);
+    if(v("cdashHasta"))filtros.push(["Hasta",v("cdashHasta")]);
+    if(v("cdashCliente"))filtros.push(["Cliente",_xlsxTexto(v("cdashCliente"))]);
+    filtros.push(["Filtro de estatus",document.getElementById("cdashEstatus")?.selectedOptions?.[0]?.text||"Todos"]);
+    filtros.push(["Incluye archivadas",incluirArchivadas?"Sí":"No"]);
+  }
+  const resumen=[
+    ["REPORTE DE COTIZACIONES M&A",""],
+    ["Generado",new Date()],
+    ["Cotizaciones",rows.length],
+    ["Autorizadas",aut],
+    ["No autorizadas",noaut],
+    ["Archivadas incluidas",arch],
+    ["Tesorería",sd],
+    ["Terceros",st],
+    ["Honorarios",sh],
+    ["Honorarios no autorizados",sna],
+    ["Total cotizado",sd+st+sh],
+    [],
+    ["FILTROS APLICADOS",""],
+    ...filtros
+  ];
+  const ws3=XLSX.utils.aoa_to_sheet(resumen,{cellDates:true});
+  ws3["!cols"]=[{wch:30},{wch:28}];
+  ["B7","B8","B9","B10","B11"].forEach(a=>{if(ws3[a])ws3[a].z='$#,##0.00';});
+  if(ws3["B2"]){ws3["B2"].t="d";ws3["B2"].z="dd/mm/yyyy hh:mm";}
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws3,"Resumen");
+  XLSX.utils.book_append_sheet(wb,ws,"Cotizaciones");
+  XLSX.utils.book_append_sheet(wb,ws2,"Conceptos");
+
+  // Workbook metadata: ayuda a Excel a identificar correctamente el archivo.
+  wb.Props={
+    Title:"Reporte de cotizaciones M&A",
+    Subject:"Cotizaciones autorizadas y no autorizadas",
+    Author:"M&A Asesores Legales",
+    Company:"M&A Asesores Legales de Establecimientos Mercantiles, S.C.",
+    CreatedDate:new Date()
+  };
+
+  const hoy=new Date().toISOString().slice(0,10);
+  const nombre="Cotizaciones_MA_"+hoy+".xlsx";
+  XLSX.writeFile(wb,nombre,{bookType:"xlsx",cellDates:true,compression:true});
+  _xlToast("⬇ "+rows.length+" cotización(es) exportadas a "+nombre,"#2563a8");
+}
+// Compatibilidad con el botón/nombre anterior.
+function exportarAutorizadasAExcel(){exportarCotizacionesXLSX();}
+
 
 function eliminarFolio(idx){
   const f=folioRegistry[idx];
@@ -6453,15 +6634,16 @@ function _crearDashboardCotizaciones(){
  const ov=document.createElement("div");ov.id="cotDashModal";
  ov.onclick=function(e){if(e.target===ov)_cerrarDashboardCotizaciones();};
  ov.innerHTML=`<div id="cotDashCard">
- <div class="cdash-head"><div><div class="cdash-title">Análisis de cotizaciones</div><div class="cdash-sub">Tesorería, Terceros, Honorarios y pendientes de autorización</div></div><button type="button" class="cdash-close" onclick="_cerrarDashboardCotizaciones()">Cerrar</button></div>
+ <div class="cdash-head"><div><div class="cdash-title">Análisis de cotizaciones</div><div class="cdash-sub">Tesorería, Terceros, Honorarios y pendientes de autorización</div></div><div style="display:flex;gap:8px;align-items:center;"><button type="button" class="cdash-close" onclick="exportarCotizacionesXLSX()" style="background:#166534;border-color:#22c55e;">⬇ Exportar .xlsx</button><button type="button" class="cdash-close" onclick="_cerrarDashboardCotizaciones()">Cerrar</button></div></div>
  <div class="cdash-body">
  <div class="cdash-filters">
  <label>DESDE<input type="date" id="cdashDesde" onchange="_renderDashboardCotizaciones()"></label>
  <label>HASTA<input type="date" id="cdashHasta" onchange="_renderDashboardCotizaciones()"></label>
  <label>CLIENTE<input type="text" id="cdashCliente" placeholder="Buscar cliente..." oninput="_renderDashboardCotizaciones()"></label>
- <label>ESTATUS<select id="cdashEstatus" onchange="_renderDashboardCotizaciones()"><option value="todos">Todos</option><option value="pendiente">No autorizadas</option><option value="autorizada">Autorizadas</option></select></label>
+ <label>ESTATUS<select id="cdashEstatus" onchange="_renderDashboardCotizaciones()"><option value="todos">Todos</option><option value="no_autorizadas">No autorizadas</option><option value="autorizada">Autorizadas</option><option value="pendiente">Pendientes</option><option value="rechazada">Rechazadas</option><option value="recotizar">Recotizar</option></select></label>
  <label>ORDENAR<select id="cdashOrden" onchange="_renderDashboardCotizaciones()"><option value="fecha_desc">Fecha ↓</option><option value="hon_desc">Honorarios ↓</option><option value="total_desc">Total ↓</option><option value="cliente_asc">Cliente A–Z</option></select></label>
  </div>
+ <div style="display:flex;justify-content:flex-end;margin:-4px 0 10px;font-size:10px;color:#6b7280;"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="cdashArchivadas" onchange="_renderDashboardCotizaciones()"> Incluir cotizaciones archivadas</label></div>
  <div class="cdash-kpis"><div class="cdash-kpi"><div class="k">Cotizaciones</div><div class="v" id="cdashCount">0</div></div><div class="cdash-kpi"><div class="k">Tesorería</div><div class="v" id="cdashD">$0.00</div></div><div class="cdash-kpi"><div class="k">Terceros</div><div class="v" id="cdashT">$0.00</div></div><div class="cdash-kpi"><div class="k">Honorarios</div><div class="v" id="cdashHon">$0.00</div></div><div class="cdash-kpi loss"><div class="k">Honorarios no autorizados</div><div class="v" id="cdashNoGanado">$0.00</div></div></div>
  <div class="cdash-tablewrap"><table class="cdash-table"><thead><tr><th>Fecha</th><th>Folio</th><th>Cliente</th><th>Asunto</th><th>Estatus</th><th class="cdash-num">Tesorería</th><th class="cdash-num">Terceros</th><th class="cdash-num">Honorarios</th><th class="cdash-num">Total</th></tr></thead><tbody id="cdashBody"></tbody></table></div>
  </div></div>`;
@@ -6470,13 +6652,40 @@ function _crearDashboardCotizaciones(){
 function _abrirDashboardCotizaciones(){_crearDashboardCotizaciones();_renderDashboardCotizaciones();}
 function _cerrarDashboardCotizaciones(){const m=document.getElementById("cotDashModal");if(m)m.remove();}
 function _renderDashboardCotizaciones(){
- const desde=document.getElementById("cdashDesde")?.value||"",hasta=document.getElementById("cdashHasta")?.value||"",cliente=(document.getElementById("cdashCliente")?.value||"").trim().toLowerCase(),est=document.getElementById("cdashEstatus")?.value||"todos",ord=document.getElementById("cdashOrden")?.value||"fecha_desc";
- const d0=desde?new Date(desde+"T00:00:00"):null,d1=hasta?new Date(hasta+"T23:59:59"):null;
- let rows=(folioRegistry||[]).filter(r=>r&&!r._deleted&&!r._archived).map(r=>Object.assign({},r,{_p:_cdPartes(r)})).filter(r=>{const fd=_cdFecha(r.fecha);if(d0&&(!fd||fd<d0))return false;if(d1&&(!fd||fd>d1))return false;if(cliente&&!String(r.cliente||"").toLowerCase().includes(cliente))return false;if(est!=="todos"&&String(r.status||"pendiente").toLowerCase()!==est)return false;return true;});
- if(ord==="hon_desc")rows.sort((a,b)=>b._p.h-a._p.h);else if(ord==="total_desc")rows.sort((a,b)=>_cdN(b.total||b._p.total)-_cdN(a.total||a._p.total));else if(ord==="cliente_asc")rows.sort((a,b)=>String(a.cliente||"").localeCompare(String(b.cliente||""),"es"));else rows.sort((a,b)=>(_cdFecha(b.fecha)||0)-(_cdFecha(a.fecha)||0));
- let sd=0,st=0,sh=0,sna=0;rows.forEach(r=>{sd+=r._p.d;st+=r._p.t;sh+=r._p.h;if(String(r.status||"pendiente").toLowerCase()!=="autorizada")sna+=r._p.h;});
- const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};set("cdashCount",rows.length.toLocaleString("es-MX"));set("cdashD",_cdMoney(sd));set("cdashT",_cdMoney(st));set("cdashHon",_cdMoney(sh));set("cdashNoGanado",_cdMoney(sna));
- const body=document.getElementById("cdashBody");if(!body)return;body.innerHTML=rows.map(r=>{const a=String(r.status||"pendiente").toLowerCase()==="autorizada";return `<tr><td>${r.fecha||""}</td><td><strong>${r.folio||""}</strong></td><td>${_escHtml(r.cliente||"")}</td><td>${_escHtml(r.asunto||r.asuntoOrden||"")}</td><td><span class="cdash-status ${a?"a":"p"}">${a?"Autorizada":"Pendiente"}</span></td><td class="cdash-num">${_cdMoney(r._p.d)}</td><td class="cdash-num">${_cdMoney(r._p.t)}</td><td class="cdash-num"><strong>${_cdMoney(r._p.h)}</strong></td><td class="cdash-num">${_cdMoney(r.total||r._p.total)}</td></tr>`}).join("");
+ const ord=document.getElementById("cdashOrden")?.value||"fecha_desc";
+ const incluirArchivadas=!!document.getElementById("cdashArchivadas")?.checked;
+ let rows=_filasDashboardActuales(incluirArchivadas).map(r=>Object.assign({},r,{_p:r._p||_cdPartes(r)}));
+ if(ord==="hon_desc")rows.sort((a,b)=>b._p.h-a._p.h);
+ else if(ord==="total_desc")rows.sort((a,b)=>_cdN(b.total||b._p.total)-_cdN(a.total||a._p.total));
+ else if(ord==="cliente_asc")rows.sort((a,b)=>_fixTextoUTF8(String(a.cliente||"")).localeCompare(_fixTextoUTF8(String(b.cliente||"")),"es"));
+ else rows.sort((a,b)=>(_xlsxFechaElab(b)||0)-(_xlsxFechaElab(a)||0));
+
+ let sd=0,st=0,sh=0,sna=0;
+ rows.forEach(r=>{
+   sd+=r._p.d;st+=r._p.t;sh+=r._p.h;
+   if(String(r.status||"pendiente").toLowerCase()!=="autorizada")sna+=r._p.h;
+ });
+ const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};
+ set("cdashCount",rows.length.toLocaleString("es-MX"));
+ set("cdashD",_cdMoney(sd));set("cdashT",_cdMoney(st));set("cdashHon",_cdMoney(sh));set("cdashNoGanado",_cdMoney(sna));
+
+ const body=document.getElementById("cdashBody");if(!body)return;
+ body.innerHTML=rows.map(r=>{
+   const st=String(r.status||"pendiente").toLowerCase();
+   const a=st==="autorizada";
+   const label=_xlsxEstadoLegible(r)+(r._archived?" · Archivada":"");
+   return `<tr>
+     <td>${_escHtml(_fechaElaboracionVista(r)||r.fecha||"")}</td>
+     <td><strong>${_escHtml(_fixTextoUTF8(r.folio||""))}</strong></td>
+     <td>${_escHtml(_fixTextoUTF8(r.cliente||""))}</td>
+     <td>${_escHtml(_fixTextoUTF8(r.asunto||r.asuntoOrden||""))}</td>
+     <td><span class="cdash-status ${a?"a":"p"}">${_escHtml(label)}</span></td>
+     <td class="cdash-num">${_cdMoney(r._p.d)}</td>
+     <td class="cdash-num">${_cdMoney(r._p.t)}</td>
+     <td class="cdash-num"><strong>${_cdMoney(r._p.h)}</strong></td>
+     <td class="cdash-num">${_cdMoney(r.total||r._p.total)}</td>
+   </tr>`;
+ }).join("");
 }
 
 </script>
