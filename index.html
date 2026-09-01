@@ -561,20 +561,6 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
   .acts>*{flex:0 0 auto;}
 }
 
-
-/* DASHBOARD DE COTIZACIONES */
-#cotDashModal{position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.76);display:none;align-items:center;justify-content:center;padding:18px}
-#cotDashCard{width:min(1220px,97vw);max-height:92vh;overflow:auto;background:#f7f7f5;border-radius:14px;box-shadow:0 30px 90px rgba(0,0,0,.45);border:1px solid #d6d6d0}
-.cdash-head{position:sticky;top:0;z-index:3;background:#1a1f2e;color:#fff;padding:16px 18px;display:flex;justify-content:space-between;gap:12px;align-items:center}
-.cdash-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700}.cdash-sub{font-size:10px;color:rgba(255,255,255,.55);margin-top:2px}
-.cdash-close{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;border-radius:7px;padding:8px 11px;cursor:pointer}
-.cdash-body{padding:16px}.cdash-filters{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px;margin-bottom:14px}
-.cdash-filters label{font-size:9px;font-weight:800;color:#6b7280;letter-spacing:.04em;display:grid;gap:4px}.cdash-filters input,.cdash-filters select{border:1px solid #d1d5db;background:#fff;border-radius:7px;padding:8px 9px;font-size:11px;color:#111827}
-.cdash-kpis{display:grid;grid-template-columns:repeat(5,minmax(155px,1fr));gap:10px;margin-bottom:14px}.cdash-kpi{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:13px}
-.cdash-kpi .k{font-size:9px;color:#6b7280;font-weight:800;text-transform:uppercase;letter-spacing:.05em}.cdash-kpi .v{font-size:20px;color:#111827;font-weight:800;margin-top:4px}.cdash-kpi.loss{border-color:#fecaca;background:#fffafa}.cdash-kpi.loss .v{color:#b91c1c}.cdash-note{font-size:9px;color:#6b7280;margin-top:4px;line-height:1.35}
-.cdash-tablewrap{overflow:auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px}.cdash-table{width:100%;border-collapse:collapse;min-width:1050px}.cdash-table th{position:sticky;top:0;background:#f3f4f6;color:#4b5563;font-size:9px;text-transform:uppercase;letter-spacing:.04em;padding:9px 8px;border-bottom:1px solid #e5e7eb;text-align:left}.cdash-table td{font-size:10px;color:#111827;padding:9px 8px;border-bottom:1px solid #f0f0f0;vertical-align:top}.cdash-table tr:hover td{background:#fafafa}.cdash-num{text-align:right;font-variant-numeric:tabular-nums}.cdash-status{display:inline-block;padding:3px 6px;border-radius:999px;font-size:8px;font-weight:800}.cdash-status.p{background:#fef3c7;color:#92400e}.cdash-status.a{background:#dcfce7;color:#166534}
-@media(max-width:900px){.cdash-filters{grid-template-columns:1fr 1fr}.cdash-kpis{grid-template-columns:1fr 1fr}}
-
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -868,7 +854,6 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
           <input type="checkbox" id="chk-show-archived" onchange="renderFolioList()" style="accent-color:#b07d2e;cursor:pointer;"> Mostrar archivadas
         </label>
         <button onclick="exportarAutorizadasAExcel()" style="background:#eff5fd;border:1px solid #c8dcf5;border-radius:var(--rs);padding:5px 12px;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#2563a8;cursor:pointer;">⬇ Exportar autorizadas</button>
-        <button onclick="_abrirDashboardCotizaciones()" style="background:#fdf6ec;border:1px solid #e8d5b0;border-radius:var(--rs);padding:5px 12px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#9a6514;cursor:pointer;">📊 Análisis / Pendientes</button>
       </div>
     </div>
     <!-- PANEL EXCEL INTEGRATION (oculto: todo se escribe directo en Google Sheets) -->
@@ -896,15 +881,14 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
         <button onclick="_nubePing()" style="background:#f8f9fb;border:1px solid #e2e5ec;border-radius:4px;padding:4px 10px;font-size:10px;font-weight:600;color:#4a5066;cursor:pointer;" title="Probar conexión">🔄</button>
       </div>
     </div>
-    <input type="search" id="folio-search" oninput="renderFolioList()" placeholder="🔎 Buscar por folio, nombre, cliente, giro, estatus…" autocomplete="off">
-<div id="folio-age-legend" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-3px 0 10px;font-size:8px;color:var(--ink3);">
-  <span style="font-weight:700;">Tiempo sin autorizar:</span>
-  <span><i style="display:inline-block;width:9px;height:9px;background:#fff;border:1px solid #d1d5db;border-radius:2px;vertical-align:-1px;margin-right:3px;"></i>0–3 días</span>
-  <span><i style="display:inline-block;width:9px;height:9px;background:#9ca3af;border-radius:2px;vertical-align:-1px;margin-right:3px;"></i>4–6 días</span>
-  <span><i style="display:inline-block;width:9px;height:9px;background:#f2c94c;border-radius:2px;vertical-align:-1px;margin-right:3px;"></i>7–11 días</span>
-  <span><i style="display:inline-block;width:9px;height:9px;background:#dc2626;border-radius:2px;vertical-align:-1px;margin-right:3px;"></i>12+ días</span>
+    <input type="search" id="folio-search" oninput="renderFolioList()" placeholder="🔎 Buscar por folio, nombre, cliente, giro, estatus…" autocomplete="off"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:-3px 0 10px;">
+<button type="button" onclick="_abrirDashboardCotizaciones()" class="btn-comp" style="padding:7px 10px;background:#111827;color:#fff;border-color:#111827;">📊 Análisis / Pendientes</button>
+<span style="font-size:8px;color:var(--ink3);">Sin autorizar:</span>
+<span style="font-size:8px;color:var(--ink3);">⬜ 0–3</span>
+<span style="font-size:8px;color:var(--ink3);">gris 4–6</span>
+<span style="font-size:8px;color:var(--ink3);">🟨 7–11</span>
+<span style="font-size:8px;color:var(--ink3);">🟥 12+</span>
 </div>
-
     <div id="folios-list">
       <div style="font-size:11px;color:var(--ink3);font-style:italic;text-align:center;padding:12px;">Genera tu primera cotización para ver el historial aquí.</div>
     </div>
@@ -2218,7 +2202,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v45 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v46 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -3985,48 +3969,33 @@ function _folioCreadoMs(f){
 function _foliosOrdenados(){
   return (folioRegistry||[]).map((f,idx)=>({f,idx})).sort((a,b)=>_folioCreadoMs(b.f)-_folioCreadoMs(a.f));
 }
-function _fechaFolioDesdeTimestamp(ms){
-  const n=Number(ms);
-  if(!Number.isFinite(n)||n<=0)return "";
-  const d=new Date(n);
-  if(Number.isNaN(d.getTime()))return "";
+function _fechaVistaDesdeMs(ms){
+  const n=Number(ms);if(!Number.isFinite(n)||n<=0)return "";
+  const d=new Date(n);if(Number.isNaN(d.getTime()))return "";
   return d.toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
 }
 function _fechaElaboracionVista(f){
-  // fechaCreacion es el sello original ya existente en _REGISTRO.
-  if(f&&f.fechaCreacion){
-    const t=Date.parse(f.fechaCreacion);
-    if(Number.isFinite(t))return _fechaFolioDesdeTimestamp(t);
-  }
-  // Compatibilidad con registros antiguos.
+  if(f&&f.fechaCreacion){const t=Date.parse(f.fechaCreacion);if(Number.isFinite(t))return _fechaVistaDesdeMs(t);}
   return (f&&f.fecha)||"";
 }
 function _fechaModificacionVista(f){
-  // _m ya es el sello de última modificación utilizado por la sincronización.
-  const x=_fechaFolioDesdeTimestamp(f&&f._m);
-  return x||((f&&f.fecha)||"");
+  const x=_fechaVistaDesdeMs(f&&f._m);return x||((f&&f.fecha)||"");
 }
-function _parseFechaVista(txt){
-  const m=String(txt||"").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(!m)return null;
-  const d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));
-  d.setHours(0,0,0,0);
-  return d;
+function _fechaMxVista(txt){
+  const m=String(txt||"").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(!m)return null;
+  const d=new Date(+m[3],+m[2]-1,+m[1]);d.setHours(0,0,0,0);return d;
 }
-function _antiguedadPendienteVista(f){
-  if(!f || f.status==="autorizada")return null;
-  const d=_parseFechaVista(_fechaElaboracionVista(f));
-  if(!d)return null;
-  const hoy=new Date(); hoy.setHours(0,0,0,0);
-  return Math.max(0,Math.floor((hoy.getTime()-d.getTime())/86400000));
+function _edadPendienteVista(f){
+  if(!f||f.status==="autorizada")return null;
+  const d=_fechaMxVista(_fechaElaboracionVista(f));if(!d)return null;
+  const hoy=new Date();hoy.setHours(0,0,0,0);return Math.max(0,Math.floor((hoy-d)/86400000));
 }
-function _colorPendienteVista(f){
-  const dias=_antiguedadPendienteVista(f);
-  if(dias===null)return {dias:null,color:"transparent",texto:""};
-  if(dias<=3)return {dias,color:"#ffffff",texto:dias+" día"+(dias===1?"":"s")+" sin autorizar"};
-  if(dias<=6)return {dias,color:"#9ca3af",texto:dias+" días sin autorizar"};
-  if(dias<=11)return {dias,color:"#f2c94c",texto:dias+" días sin autorizar"};
-  return {dias,color:"#dc2626",texto:dias+" días sin autorizar"};
+function _semPendienteVista(f){
+  const dias=_edadPendienteVista(f);if(dias===null)return{dias:null,color:"transparent",texto:""};
+  if(dias<=3)return{dias,color:"#ffffff",texto:dias+" día"+(dias===1?"":"s")+" sin autorizar"};
+  if(dias<=6)return{dias,color:"#9ca3af",texto:dias+" días sin autorizar"};
+  if(dias<=11)return{dias,color:"#f2c94c",texto:dias+" días sin autorizar"};
+  return{dias,color:"#dc2626",texto:dias+" días sin autorizar"};
 }
 function renderFolioList(){
   if(typeof MODO_PC!=="undefined"&&MODO_PC){renderFolioListPC();return;}
@@ -4046,11 +4015,8 @@ function renderFolioList(){
     const isAut=f.status==="autorizada";
     const div=document.createElement("div");
     div.className="folio-row status-"+f.status;
-    const antig=_colorPendienteVista(f);
-    if(antig.dias!==null){
-      div.style.borderRight="7px solid "+antig.color;
-      div.title=antig.texto;
-    }
+    const _sem=_semPendienteVista(f);
+    if(_sem.dias!==null){div.style.borderRight="7px solid "+_sem.color;div.title=_sem.texto;}
     const compBadge=f.isComplementaria?'<span class="comp-badge">COMP</span>':"";
     const areasStr=f.areas&&f.areas.length?'<span style="font-size:9px;color:var(--ink3);">'+f.areas.join(", ")+'</span>':"";
     const statusOptions=["pendiente","autorizada","rechazada","recotizar"];
@@ -5458,7 +5424,7 @@ async function abrirModalRegistrarPago(idx){
   m.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.68);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow:auto";
   const rows=saldo.map((x,i)=>`<tr data-i="${i}">
     <td style="padding:8px;border-bottom:1px solid #e5e7eb"><input type="checkbox" class="pgSel" checked></td>
-    <td style="padding:8px;border-bottom:1px solid #e5e7eb"><b>${_pagoEsc(x.n)}</b><div style="font-size:11px;color:#64748b">Saldo H ${_pagoMoneda(x.saldoH)} · T ${_pagoMoneda(x.saldoT)}${x.d?" · Tesorería "+_pagoMoneda(x.d):""}</div></td>
+    <td style="padding:8px;border-bottom:1px solid #e5e7eb"><b>${_pagoEsc(x.n)}</b><div style="font-size:11px;color:#64748b">Saldo H ${_pagoMoneda(x.saldoH)} · T ${_pagoMoneda(x.saldoT)}${x.d?" · Dtos "+_pagoMoneda(x.d):""}</div></td>
     <td style="padding:8px;border-bottom:1px solid #e5e7eb"><input class="pgH" type="number" min="0" max="${x.saldoH}" step="0.01" value="0" style="width:110px"></td>
     <td style="padding:8px;border-bottom:1px solid #e5e7eb"><input class="pgT" type="number" min="0" max="${x.saldoT}" step="0.01" value="0" style="width:110px"></td>
   </tr>`).join("");
@@ -5787,8 +5753,7 @@ function _ordenServicioHTML(f){
   const ubiHtml=String(o.ubicacion||"").trim()
     ?'<a href="'+mapsUrl+'" target="_blank" style="color:#2563a8;text-decoration:underline;">'+_escHtml(o.ubicacion)+' 📍</a>'
     :"Por definir";
-  const itemsAutorizados=(s.items||[]).filter(it=>it._aut!==false && it.signed!=="no");
-  const filas=itemsAutorizados.map(it=>{
+  const filas=s.items.filter(it=>it._aut!==false).map(it=>{
     return '<tr>'+
       '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#b07d2e;white-space:nowrap;">'+_escHtml(it.al||"")+'</td>'+
       '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:11px;color:#1a1f2e;">'+_escHtml(it.n)+(it.s?'<br><span style="font-size:9px;color:#8890a4;">'+_escHtml(it.s)+'</span>':"")+'</td>'+
@@ -5820,6 +5785,7 @@ function _ordenServicioHTML(f){
       '<th style="padding:8px 10px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#fff;text-align:left;">Área</th>'+
       '<th style="padding:8px 10px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#fff;text-align:left;">Gestión / Concepto</th>'+
       '</tr></thead><tbody>'+filas+'</tbody></table>'+
+    '<div style="margin-top:22px;font-size:9px;color:#8890a4;text-align:center;">Esta orden contiene únicamente los conceptos autorizados.</div>'+
   '</div>';
 }
 
@@ -5899,31 +5865,7 @@ function imprimirOrden(idx){
   if(!f||!f._orden)return;
   const w=window.open("","_blank");
   if(!w){alert("Tu navegador bloqueó la ventana. Permite ventanas emergentes para este sitio.");return;}
-  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Orden de Servicio - '+_escHtml(f.cliente||f.folio)+'</title></head><body style="margin:0;font-family:Arial,sans-serif;">'+_ordenServicioHTML(f)+'
-<div id="cotDashModal" onclick="if(event.target===this)_cerrarDashboardCotizaciones()">
-  <div id="cotDashCard">
-    <div class="cdash-head"><div><div class="cdash-title">Análisis de cotizaciones</div><div class="cdash-sub">Desglose económico y honorarios pendientes de autorización</div></div><button class="cdash-close" onclick="_cerrarDashboardCotizaciones()">Cerrar</button></div>
-    <div class="cdash-body">
-      <div class="cdash-filters">
-        <label>DESDE<input type="date" id="cdashDesde" onchange="_renderDashboardCotizaciones()"></label>
-        <label>HASTA<input type="date" id="cdashHasta" onchange="_renderDashboardCotizaciones()"></label>
-        <label>CLIENTE<input type="text" id="cdashCliente" placeholder="Buscar cliente..." oninput="_renderDashboardCotizaciones()"></label>
-        <label>ESTATUS<select id="cdashEstatus" onchange="_renderDashboardCotizaciones()"><option value="todos">Todos</option><option value="pendiente">No autorizadas</option><option value="autorizada">Autorizadas</option></select></label>
-        <label>ORDENAR<select id="cdashOrden" onchange="_renderDashboardCotizaciones()"><option value="fecha_desc">Fecha ↓</option><option value="hon_desc">Honorarios ↓</option><option value="total_desc">Total ↓</option><option value="cliente_asc">Cliente A–Z</option></select></label>
-      </div>
-      <div class="cdash-kpis">
-        <div class="cdash-kpi"><div class="k">Cotizaciones</div><div class="v" id="cdashCount">0</div></div>
-        <div class="cdash-kpi"><div class="k">Tesorería</div><div class="v" id="cdashD">$0.00</div></div>
-        <div class="cdash-kpi"><div class="k">Terceros</div><div class="v" id="cdashT">$0.00</div></div>
-        <div class="cdash-kpi"><div class="k">Honorarios</div><div class="v" id="cdashHon">$0.00</div></div>
-        <div class="cdash-kpi loss"><div class="k">Honorarios no autorizados</div><div class="v" id="cdashNoGanado">$0.00</div><div class="cdash-note">Lo que todavía no estás ganando porque sigue pendiente.</div></div>
-      </div>
-      <div class="cdash-tablewrap"><table class="cdash-table"><thead><tr><th>Fecha</th><th>Folio</th><th>Cliente</th><th>Asunto</th><th>Estatus</th><th class="cdash-num">Tesorería</th><th class="cdash-num">Terceros</th><th class="cdash-num">Honorarios</th><th class="cdash-num">Total</th></tr></thead><tbody id="cdashBody"></tbody></table></div>
-    </div>
-  </div>
-</div>
-
-</body></html>');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Orden de Servicio - '+_escHtml(f.cliente||f.folio)+'</title></head><body style="margin:0;font-family:Arial,sans-serif;">'+_ordenServicioHTML(f)+'</body></html>');
   w.document.close();
   setTimeout(()=>{w.focus();w.print();},400);
 }
@@ -6404,7 +6346,43 @@ async function sincronizarCobranzaUI(){
   }catch(e){alert("No se pudo sincronizar: "+String(e.message||e));}
 }
 
-\nfunction _cdashNum(v){const n=Number(v);return Number.isFinite(n)?n:0;}\nfunction _cdashMoney(v){return "$"+_cdashNum(v).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2});}\nfunction _cdashDateObj(fecha){const m=String(fecha||"").match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);if(!m)return null;return new Date(+m[3],+m[2]-1,+m[1]);}\nfunction _cdashParts(r){const a=r&&r.snapshot&&Array.isArray(r.snapshot.items)?r.snapshot.items:[];let d=0,t=0,h=0;a.forEach(x=>{d+=_cdashNum(x.d);t+=_cdashNum(x.t);h+=_cdashNum(x.h);});return{d,t,h,total:d+t+h};}\nfunction _cdashRows(){return (folioRegistry||[]).filter(r=>r&&!r._deleted).map(r=>Object.assign({},r,{_parts:_cdashParts(r)}));}\nfunction _abrirDashboardCotizaciones(){const m=document.getElementById("cotDashModal");if(!m)return;m.style.display="flex";_renderDashboardCotizaciones();}\nfunction _cerrarDashboardCotizaciones(){const m=document.getElementById("cotDashModal");if(m)m.style.display="none";}\nfunction _renderDashboardCotizaciones(){\n const desde=document.getElementById("cdashDesde")?.value||"",hasta=document.getElementById("cdashHasta")?.value||"",cliente=(document.getElementById("cdashCliente")?.value||"").trim().toLowerCase(),est=document.getElementById("cdashEstatus")?.value||"todos",ord=document.getElementById("cdashOrden")?.value||"fecha_desc";\n const d0=desde?new Date(desde+"T00:00:00"):null,d1=hasta?new Date(hasta+"T23:59:59"):null;\n let rows=_cdashRows().filter(r=>{const fd=_cdashDateObj(r.fecha);if(d0&&(!fd||fd<d0))return false;if(d1&&(!fd||fd>d1))return false;if(cliente&&!String(r.cliente||"").toLowerCase().includes(cliente))return false;if(est!=="todos"&&String(r.status||"pendiente").toLowerCase()!==est)return false;return true;});\n if(ord==="hon_desc")rows.sort((a,b)=>b._parts.h-a._parts.h);else if(ord==="total_desc")rows.sort((a,b)=>_cdashNum(b.total||b._parts.total)-_cdashNum(a.total||a._parts.total));else if(ord==="cliente_asc")rows.sort((a,b)=>String(a.cliente||"").localeCompare(String(b.cliente||""),"es"));else rows.sort((a,b)=>(_cdashDateObj(b.fecha)||0)-(_cdashDateObj(a.fecha)||0));\n let D=0,T=0,H=0,NG=0;rows.forEach(r=>{D+=r._parts.d;T+=r._parts.t;H+=r._parts.h;if(String(r.status||"pendiente").toLowerCase()!=="autorizada")NG+=r._parts.h;});\n const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};set("cdashCount",rows.length.toLocaleString("es-MX"));set("cdashD",_cdashMoney(D));set("cdashT",_cdashMoney(T));set("cdashHon",_cdashMoney(H));set("cdashNoGanado",_cdashMoney(NG));\n const body=document.getElementById("cdashBody");if(!body)return;body.innerHTML=rows.map(r=>{const st=String(r.status||"pendiente").toLowerCase(),aut=st==="autorizada";return `<tr><td>${_escHtml(r.fecha||"")}</td><td><strong>${_escHtml(r.folio||"")}</strong></td><td>${_escHtml(r.cliente||"")}</td><td>${_escHtml(r.asunto||r.asuntoOrden||"")}</td><td><span class="cdash-status ${aut?"a":"p"}">${aut?"Autorizada":"Pendiente"}</span></td><td class="cdash-num">${_cdashMoney(r._parts.d)}</td><td class="cdash-num">${_cdashMoney(r._parts.t)}</td><td class="cdash-num"><strong>${_cdashMoney(r._parts.h)}</strong></td><td class="cdash-num">${_cdashMoney(r.total||r._parts.total)}</td></tr>`;}).join("");\n}\n</script>
+
+function _cdN(v){const n=Number(v);return Number.isFinite(n)?n:0;}
+function _cdMoney(v){return "$"+_cdN(v).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function _cdFecha(f){const m=String(f||"").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?new Date(+m[3],+m[2]-1,+m[1]):null;}
+function _cdPartes(r){const a=r&&r.snapshot&&Array.isArray(r.snapshot.items)?r.snapshot.items:[];let d=0,t=0,h=0;a.forEach(x=>{d+=_cdN(x.d);t+=_cdN(x.t);h+=_cdN(x.h)});return{d,t,h,total:d+t+h};}
+function _crearDashboardCotizaciones(){
+ if(document.getElementById("cotDashModal"))return;
+ const ov=document.createElement("div");ov.id="cotDashModal";
+ ov.onclick=function(e){if(e.target===ov)_cerrarDashboardCotizaciones();};
+ ov.innerHTML=`<div id="cotDashCard">
+ <div class="cdash-head"><div><div class="cdash-title">Análisis de cotizaciones</div><div class="cdash-sub">Tesorería, Terceros, Honorarios y pendientes de autorización</div></div><button type="button" class="cdash-close" onclick="_cerrarDashboardCotizaciones()">Cerrar</button></div>
+ <div class="cdash-body">
+ <div class="cdash-filters">
+ <label>DESDE<input type="date" id="cdashDesde" onchange="_renderDashboardCotizaciones()"></label>
+ <label>HASTA<input type="date" id="cdashHasta" onchange="_renderDashboardCotizaciones()"></label>
+ <label>CLIENTE<input type="text" id="cdashCliente" placeholder="Buscar cliente..." oninput="_renderDashboardCotizaciones()"></label>
+ <label>ESTATUS<select id="cdashEstatus" onchange="_renderDashboardCotizaciones()"><option value="todos">Todos</option><option value="pendiente">No autorizadas</option><option value="autorizada">Autorizadas</option></select></label>
+ <label>ORDENAR<select id="cdashOrden" onchange="_renderDashboardCotizaciones()"><option value="fecha_desc">Fecha ↓</option><option value="hon_desc">Honorarios ↓</option><option value="total_desc">Total ↓</option><option value="cliente_asc">Cliente A–Z</option></select></label>
+ </div>
+ <div class="cdash-kpis"><div class="cdash-kpi"><div class="k">Cotizaciones</div><div class="v" id="cdashCount">0</div></div><div class="cdash-kpi"><div class="k">Tesorería</div><div class="v" id="cdashD">$0.00</div></div><div class="cdash-kpi"><div class="k">Terceros</div><div class="v" id="cdashT">$0.00</div></div><div class="cdash-kpi"><div class="k">Honorarios</div><div class="v" id="cdashHon">$0.00</div></div><div class="cdash-kpi loss"><div class="k">Honorarios no autorizados</div><div class="v" id="cdashNoGanado">$0.00</div></div></div>
+ <div class="cdash-tablewrap"><table class="cdash-table"><thead><tr><th>Fecha</th><th>Folio</th><th>Cliente</th><th>Asunto</th><th>Estatus</th><th class="cdash-num">Tesorería</th><th class="cdash-num">Terceros</th><th class="cdash-num">Honorarios</th><th class="cdash-num">Total</th></tr></thead><tbody id="cdashBody"></tbody></table></div>
+ </div></div>`;
+ document.body.appendChild(ov);
+}
+function _abrirDashboardCotizaciones(){_crearDashboardCotizaciones();_renderDashboardCotizaciones();}
+function _cerrarDashboardCotizaciones(){const m=document.getElementById("cotDashModal");if(m)m.remove();}
+function _renderDashboardCotizaciones(){
+ const desde=document.getElementById("cdashDesde")?.value||"",hasta=document.getElementById("cdashHasta")?.value||"",cliente=(document.getElementById("cdashCliente")?.value||"").trim().toLowerCase(),est=document.getElementById("cdashEstatus")?.value||"todos",ord=document.getElementById("cdashOrden")?.value||"fecha_desc";
+ const d0=desde?new Date(desde+"T00:00:00"):null,d1=hasta?new Date(hasta+"T23:59:59"):null;
+ let rows=(folioRegistry||[]).filter(r=>r&&!r._deleted).map(r=>Object.assign({},r,{_p:_cdPartes(r)})).filter(r=>{const fd=_cdFecha(r.fecha);if(d0&&(!fd||fd<d0))return false;if(d1&&(!fd||fd>d1))return false;if(cliente&&!String(r.cliente||"").toLowerCase().includes(cliente))return false;if(est!=="todos"&&String(r.status||"pendiente").toLowerCase()!==est)return false;return true;});
+ if(ord==="hon_desc")rows.sort((a,b)=>b._p.h-a._p.h);else if(ord==="total_desc")rows.sort((a,b)=>_cdN(b.total||b._p.total)-_cdN(a.total||a._p.total));else if(ord==="cliente_asc")rows.sort((a,b)=>String(a.cliente||"").localeCompare(String(b.cliente||""),"es"));else rows.sort((a,b)=>(_cdFecha(b.fecha)||0)-(_cdFecha(a.fecha)||0));
+ let sd=0,st=0,sh=0,sna=0;rows.forEach(r=>{sd+=r._p.d;st+=r._p.t;sh+=r._p.h;if(String(r.status||"pendiente").toLowerCase()!=="autorizada")sna+=r._p.h;});
+ const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};set("cdashCount",rows.length.toLocaleString("es-MX"));set("cdashD",_cdMoney(sd));set("cdashT",_cdMoney(st));set("cdashHon",_cdMoney(sh));set("cdashNoGanado",_cdMoney(sna));
+ const body=document.getElementById("cdashBody");if(!body)return;body.innerHTML=rows.map(r=>{const a=String(r.status||"pendiente").toLowerCase()==="autorizada";return `<tr><td>${r.fecha||""}</td><td><strong>${r.folio||""}</strong></td><td>${_escHtml(r.cliente||"")}</td><td>${_escHtml(r.asunto||r.asuntoOrden||"")}</td><td><span class="cdash-status ${a?"a":"p"}">${a?"Autorizada":"Pendiente"}</span></td><td class="cdash-num">${_cdMoney(r._p.d)}</td><td class="cdash-num">${_cdMoney(r._p.t)}</td><td class="cdash-num"><strong>${_cdMoney(r._p.h)}</strong></td><td class="cdash-num">${_cdMoney(r.total||r._p.total)}</td></tr>`}).join("");
+}
+
+</script>
 
 <style>
 /* ── v19: vista previa móvil en tarjetas; impresión conserva tabla ───────── */
@@ -6533,4 +6511,10 @@ async function sincronizarCobranzaUI(){
   #preview-overlay .tc-pv:nth-last-child(-n+2){border-bottom:0!important;}
   #preview-overlay .tc-pv-a{font-size:16px!important;}
 }
+#cotDashModal{position:fixed;inset:0;z-index:120000;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:18px}
+#cotDashCard{width:min(1180px,96vw);max-height:92vh;overflow:auto;background:#f7f7f5;border-radius:14px;box-shadow:0 30px 90px rgba(0,0,0,.45);border:1px solid #d6d6d0}
+.cdash-head{position:sticky;top:0;z-index:2;background:#111827;color:#fff;padding:16px 18px;display:flex;justify-content:space-between;gap:12px;align-items:center}.cdash-title{font-size:18px;font-weight:800}.cdash-sub{font-size:10px;color:rgba(255,255,255,.55)}.cdash-close{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;border-radius:7px;padding:8px 11px;cursor:pointer}
+.cdash-body{padding:16px}.cdash-filters{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px;margin-bottom:14px}.cdash-filters label{font-size:9px;font-weight:800;color:#6b7280;display:grid;gap:4px}.cdash-filters input,.cdash-filters select{border:1px solid #d1d5db;background:#fff;border-radius:7px;padding:8px 9px;font-size:11px;color:#111827}
+.cdash-kpis{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:10px;margin-bottom:14px}.cdash-kpi{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:13px}.cdash-kpi .k{font-size:9px;color:#6b7280;font-weight:800;text-transform:uppercase}.cdash-kpi .v{font-size:19px;color:#111827;font-weight:850;margin-top:4px}.cdash-kpi.loss .v{color:#b91c1c}
+.cdash-tablewrap{overflow:auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px}.cdash-table{width:100%;border-collapse:collapse;min-width:1040px}.cdash-table th{position:sticky;top:0;background:#f3f4f6;color:#4b5563;font-size:9px;text-transform:uppercase;padding:9px 8px;border-bottom:1px solid #e5e7eb;text-align:left}.cdash-table td{font-size:10px;color:#111827;padding:9px 8px;border-bottom:1px solid #f0f0f0}.cdash-num{text-align:right}.cdash-status{display:inline-block;padding:3px 6px;border-radius:999px;font-size:8px;font-weight:800}.cdash-status.p{background:#fef3c7;color:#92400e}.cdash-status.a{background:#dcfce7;color:#166534}@media(max-width:900px){.cdash-filters{grid-template-columns:1fr 1fr}.cdash-kpis{grid-template-columns:1fr 1fr}}
 </style>
