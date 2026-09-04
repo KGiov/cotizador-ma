@@ -565,6 +565,10 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style id="rx-style">
+.rx-overlay,.rx-list-overlay{position:fixed;inset:0;z-index:130000;background:rgba(15,18,28,.72);overflow:auto;padding:18px;font-family:Inter,Arial,sans-serif}.rx-tools{width:min(820px,96vw);margin:0 auto 10px;display:flex;gap:8px;justify-content:flex-end}.rx-tools button,.rx-list-head button,.rx-list-actions button{border:1px solid #d1d5db;background:#fff;border-radius:7px;padding:8px 11px;font-size:11px;font-weight:700;cursor:pointer}.rx-page{width:184.6mm;min-height:271.6mm;margin:0 auto;background:#fff;color:#1a1f2e;padding:0 13.3mm 4mm;box-shadow:0 10px 35px rgba(0,0,0,.28);display:flex;flex-direction:column}.rx-top{display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:flex-start;margin:0 -9mm;min-height:26mm}.rx-logo{height:26mm}.rx-folio{font-size:7px;color:#b9bfcb;letter-spacing:.14em;text-transform:uppercase;padding-top:2mm}.rx-title{align-self:center;font-family:"Cormorant Garamond",serif;font-size:20px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;border-bottom:1.5px solid #b07d2e;padding-bottom:5px;margin-top:8mm}.rx-date{text-align:right;font-size:10.5px;font-weight:700;text-transform:uppercase;margin-top:12mm}.rx-issuer{font-size:10.5px;font-weight:700;text-transform:uppercase;line-height:1.45;margin-top:12mm}.rx-issuer span{font-weight:500;color:#4a5066;text-transform:none}.rx-body{font-size:11px;line-height:1.85;text-align:justify;margin-top:20mm}.rx-incisos{margin:6mm 0 0 14px}.rx-inc{display:flex;align-items:baseline;gap:7px;font-size:11px;margin-bottom:5px}.rx-inc>b{color:#b07d2e}.rx-inc>i{flex:1;border-bottom:1px dotted #b9bfcb;transform:translateY(-3px)}.rx-inc>strong{white-space:nowrap}.rx-tax{display:flex;justify-content:flex-end;gap:20px;font-size:9px;color:#5a6175;margin-top:7mm}.rx-total{align-self:flex-end;display:flex;gap:18px;border:1px solid #1a1f2e;padding:3px 12px;text-transform:uppercase;font-size:10.5px;letter-spacing:.12em;margin-top:8mm}.rx-paid,.rx-promise{align-self:flex-end;margin-top:5px;padding:4px 9px;border-radius:999px;font-size:8px;font-weight:800;letter-spacing:.08em}.rx-paid{background:#dcfce7;color:#166534}.rx-promise{background:#fef3c7;color:#92400e}.rx-sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;text-align:center;margin-top:auto;padding-top:22mm}.rx-sigs>div{display:flex;flex-direction:column;align-items:center}.rx-sigs b{font-size:10px;letter-spacing:.3em}.rx-sigs i{width:52mm;border-bottom:1px solid #5a6175;margin:11mm 0 5px}.rx-sigs span{font-size:10px}.rx-footer{margin-top:12mm;padding-top:6px;border-top:1.5px solid #8ba6bd;text-align:center;font-family:"Cormorant Garamond",serif;font-size:11px;line-height:1.45;color:#b07d2e}.rx-list-card{width:min(1050px,96vw);margin:20px auto;background:#fff;border-radius:12px;overflow:hidden}.rx-list-head{padding:15px 18px;background:#1a1f2e;color:#fff;display:flex;justify-content:space-between;align-items:center}.rx-list-head h2{margin:0;font-size:18px}.rx-list-head small{color:#cbd5e1}.rx-list-body{max-height:78vh;overflow:auto}.rx-list-row{display:grid;grid-template-columns:1fr 180px 220px;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid #e5e7eb}.rx-list-row>div{display:flex;flex-direction:column;gap:3px}.rx-list-row span,.rx-list-row small{font-size:10px;color:#64748b}.rx-s-ok,.rx-s-warn{display:inline-block;width:max-content;padding:3px 7px;border-radius:999px!important;font-weight:800!important}.rx-s-ok{background:#dcfce7;color:#166534!important}.rx-s-warn{background:#fef3c7;color:#92400e!important}.rx-list-actions{flex-direction:row!important;justify-content:flex-end}@media(max-width:800px){.rx-page{width:100%;min-height:0;padding:10px 14px}.rx-list-row{grid-template-columns:1fr}.rx-list-actions{justify-content:flex-start!important}.rx-sigs{gap:12px}.rx-sigs i{width:34vw}}@media print{.rx-tools{display:none!important}.rx-overlay{position:static;background:#fff;padding:0}.rx-page{box-shadow:none;margin:0}}
+</style>
 </head>
 <body>
 
@@ -883,6 +887,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
     </div>
     <input type="search" id="folio-search" oninput="renderFolioList()" placeholder="🔎 Buscar por folio, nombre, cliente, giro, estatus…" autocomplete="off"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:-3px 0 10px;">
 <button type="button" onclick="_abrirDashboardCotizaciones()" class="btn-comp" style="padding:7px 10px;background:#111827;color:#fff;border-color:#111827;">📊 Análisis / Pendientes</button>
+<button type="button" onclick="_abrirListaRecibos()" class="btn-comp" style="padding:7px 10px;background:#fdf6ec;color:#8a5d18;border-color:#e8d5b0;">🧾 Ver recibos</button>
 <button type="button" id="btn-folios-activos" onclick="_cambiarVistaArchivo(false)" class="btn-comp" style="padding:7px 10px;background:#b07d2e;color:#fff;border-color:#b07d2e;">📂 Activas <span id="cnt-folios-activos"></span></button>
 <button type="button" id="btn-folios-archivados" onclick="_cambiarVistaArchivo(true)" class="btn-comp" style="padding:7px 10px;background:#f3f4f6;color:#4b5563;border-color:#d1d5db;">📦 Archivadas <span id="cnt-folios-archivados"></span></button>
 <span style="font-size:8px;color:var(--ink3);">Sin autorizar:</span>
@@ -2204,7 +2209,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v49 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v50 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -3974,6 +3979,8 @@ async function guardarFolioEnRegistry(){
     if(previo.asuntoOrden)entry.asuntoOrden=previo.asuntoOrden;
     if(previo._modoTrans)entry._modoTrans=previo._modoTrans;
     if(previo._anticipoMonto)entry._anticipoMonto=previo._anticipoMonto;
+    if(previo._recibos)entry._recibos=previo._recibos;
+    if(previo._situacionCobro)entry._situacionCobro=previo._situacionCobro;
   }
   // Solo una cotización verdaderamente NUEVA recibe la fecha/hora actual de creación.
   if(!entry.fechaCreacion)entry.fechaCreacion=new Date().toISOString();
@@ -4113,6 +4120,7 @@ function renderFolioList(){
     const ecBtn=isAut?'<button class="btn-comp" style="background:#eff5fd;border-color:#c8dcf5;color:#2563a8;" onclick="actualizarAmbos('+idx+')" title="Actualizar estado de cuenta y actividades">📊 EC</button>':"";
     const pagadoBtn=isAut?'<button class="btn-comp" style="background:#f0f9f4;border-color:#bbf7d0;color:#166534;" onclick="marcarPagadoEC('+idx+')" title="Registrar y distribuir un pago">💰 Registrar pago</button>':"";
     const ordenBtn=isAut?'<button class="btn-comp" style="background:#fdf6ec;border-color:#e8d5b0;color:#b07d2e;" onclick="verOrdenServicio('+idx+')" title="Ver / descargar la Orden de Servicio">📄 Orden</button>':"";
+    const cobroBtn=isAut?'<button class="btn-comp" style="background:#eefbf3;border-color:#bbf7d0;color:#166534;font-weight:700;" onclick="abrirModalRegistrarPago('+idx+',{origen:&quot;manual&quot;})" title="Registrar pago, anticipo o generar recibo">💳 Cobro</button>':"";
     const archiveBtn=f._archived
       ? '<button class="btn-comp" style="background:#eef2ff;border-color:#c7d2fe;color:#3730a3;font-weight:700;" onclick="archivarFolio('+idx+')" title="Regresar esta cotización al seguimiento activo">📂 Restaurar</button>'
       : '<button class="btn-comp" style="background:#f3f4f6;border-color:#d1d5db;color:#4b5563;" onclick="archivarFolio('+idx+')" title="Archivar sin borrar y conservar su estatus">📦 Archivar</button>';
@@ -4133,7 +4141,7 @@ function renderFolioList(){
       '<div style="display:flex;gap:4px;flex-wrap:wrap;">'+
         (f._archived
           ? verBtn+archiveBtn+delBtn
-          : verBtn+editBtn+compBtn+ecBtn+pagadoBtn+ordenBtn+pcBtn+archiveBtn+delBtn)+
+          : verBtn+editBtn+compBtn+ecBtn+pagadoBtn+ordenBtn+cobroBtn+pcBtn+archiveBtn+delBtn)+
       '</div>';
     list.appendChild(div);
   });
@@ -5492,46 +5500,136 @@ async function _pagoEstadoNube(f,items){
   return await res.json();
 }
 
-async function abrirModalRegistrarPago(idx){
+
+function _recibosFolio(f){
+  if(!Array.isArray(f._recibos))f._recibos=[];
+  return f._recibos;
+}
+function _reciboKeyItem(x){return String(x.k)+"|"+String(x.n||"");}
+function _reciboPagadoPrevio(f,item){
+  const key=_reciboKeyItem(item);let h=0,t=0;
+  _recibosFolio(f).filter(r=>r.status==="pagado").forEach(r=>{
+    (r.aplicaciones||[]).forEach(a=>{if(a.itemKey===key){h+=Number(a.honorarios||0);t+=Number(a.terceros||0);}});
+  });
+  return {h,t,total:h+t};
+}
+function _nextReciboFolio(f){
+  let max=0;_recibosFolio(f).forEach(r=>{const m=String(r.folio||"").match(/-REC-(\d+)$/);if(m)max=Math.max(max,Number(m[1])||0);});
+  return f.folio+"-REC-"+String(max+1).padStart(3,"0");
+}
+function _nombreConceptoRecibo(f,item,aplicado){
+  const prev=_reciboPagadoPrevio(f,item).total,total=Number(item.h||0)+Number(item.t||0),rem=Math.max(total-prev,0),ahora=Number(aplicado||0);
+  if(prev<=0.01&&ahora>=rem-0.01)return item.n;
+  if(prev<=0.01)return "Anticipo de "+item.n;
+  if(ahora>=rem-0.01)return "Finiquito de "+item.n;
+  return "Abono de "+item.n;
+}
+function _guardarReciboDesdePago(f,items,aplicaciones,opts){
+  const forma=opts.forma||"efectivo",neto=Number(opts.montoNeto||0),iva=forma==="factura"?Math.round(neto*.16*100)/100:0,totalCobrado=Math.round((neto+iva)*100)/100;
+  const porItem={};aplicaciones.forEach(a=>{if(!porItem[a.itemKey])porItem[a.itemKey]={h:0,t:0};porItem[a.itemKey].h+=Number(a.honorarios||0);porItem[a.itemKey].t+=Number(a.terceros||0);});
+  const conceptos=items.map(x=>{const key=_reciboKeyItem(x),p=porItem[key];if(!p||p.h+p.t<=0)return null;const n=p.h+p.t;return {itemKey:key,nombre:_nombreConceptoRecibo(f,x,n),nombreBase:x.n,area:x.area,honorarios:p.h,terceros:p.t,neto:n};}).filter(Boolean);
+  const r={folio:_nextReciboFolio(f),cotizacion:f.folio,fecha:new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}),creadoEn:new Date().toISOString(),cliente:f.cliente||"",domicilio:(f.snapshot&&f.snapshot.c2)||f.domicilio||"",asunto:f.asuntoOrden||f.asunto||"",forma,recibe:opts.recibe||"Lic. Giovanni Ramos",status:opts.promesa?"promesa":"pagado",montoNeto:neto,iva,totalCobrado,aplicaciones:aplicaciones.map(a=>({...a})),conceptos};
+  _recibosFolio(f).push(r);f._m=_mNuevo();_guardarRegistroLocal();return r;
+}
+function _fmtRecibo(n){return Number(n||0).toLocaleString("es-MX",{style:"currency",currency:"MXN",minimumFractionDigits:2});}
+function _escRec(s){return _escHtml(s||"");}
+function _reciboHTML(f,r){
+  const logo=document.querySelector(".hdr-l img")?.src||"",letras="abcdefghijklmnopqrstuvwxyz".split("");
+  const items=(r.conceptos||[]).map((c,i)=>'<div class="rx-inc"><b>'+letras[i]+')</b><span>'+_escRec(c.nombre)+'</span><i></i><strong>'+_fmtRecibo(c.neto+(r.forma==="factura"?c.neto*.16:0))+'</strong></div>').join("");
+  const body=(r.conceptos||[]).length>1?'El presente documento ampara la entrega en favor del despacho por la cantidad de <strong>'+_fmtRecibo(r.totalCobrado)+'</strong>, por los siguientes conceptos:':'El presente documento ampara la entrega en favor del despacho por la cantidad de <strong>'+_fmtRecibo(r.totalCobrado)+'</strong>, por concepto de '+_escRec((r.conceptos[0]||{}).nombre||"")+'.';
+  const estado=r.status==="promesa"?'<div class="rx-promise">PROMESA DE PAGO · PENDIENTE</div>':'<div class="rx-paid">PAGADO</div>';
+  return '<div class="rx-page"><div class="rx-top"><div class="rx-folio">'+_escRec(r.folio)+'</div>'+(logo?'<img src="'+logo+'" class="rx-logo">':"")+'</div><div class="rx-title">Acuse de Recibo</div><div class="rx-date">Ciudad de México, a '+_escRec(r.fecha)+'</div><div class="rx-issuer">'+_escRec(r.cliente)+'<br><span>'+_escRec(r.domicilio)+'</span></div><div class="rx-body">'+body+'</div><div class="rx-incisos">'+items+'</div>'+(r.forma==="factura"?'<div class="rx-tax"><span>Subtotal '+_fmtRecibo(r.montoNeto)+'</span><span>IVA 16% '+_fmtRecibo(r.iva)+'</span></div>':"")+'<div class="rx-total"><span>Total</span><strong>'+_fmtRecibo(r.totalCobrado)+'</strong></div>'+estado+'<div class="rx-sigs"><div><b>ENTREGA</b><i></i><span>'+_escRec(r.cliente)+'</span></div><div><b>RECIBE</b><i></i><span>'+_escRec(r.recibe)+'</span></div></div><div class="rx-footer">Asesores Legales de Establecimientos Mercantiles<br>Manzanillo No. 138, Roma Sur<br>Tels: 56380604, 56390142</div></div>';
+}
+function _verRecibo(folioCot,folioRec){
+  const f=(folioRegistry||[]).find(x=>x.folio===folioCot);if(!f)return;
+  const r=_recibosFolio(f).find(x=>x.folio===folioRec);if(!r)return;
+  document.getElementById("modal-recibo")?.remove();
+  const ov=document.createElement("div");ov.id="modal-recibo";ov.className="rx-overlay";
+  const tools=document.createElement("div");tools.className="rx-tools";
+  const b1=document.createElement("button");b1.textContent="⬇ PDF";b1.onclick=()=>_descargarRecibo(f.folio,r.folio);
+  const b2=document.createElement("button");b2.textContent="🖨 Imprimir";b2.onclick=()=>_imprimirRecibo(f.folio,r.folio);
+  const b3=document.createElement("button");b3.textContent="✕ Cerrar";b3.onclick=()=>ov.remove();
+  tools.append(b1,b2,b3);ov.appendChild(tools);
+  const holder=document.createElement("div");holder.innerHTML=_reciboHTML(f,r);ov.appendChild(holder.firstElementChild);
+  document.body.appendChild(ov);
+}
+function _imprimirRecibo(fc,fr){
+  const f=folioRegistry.find(x=>x.folio===fc),r=f&&_recibosFolio(f).find(x=>x.folio===fr);if(!r)return;
+  const w=window.open("","_blank");if(!w)return alert("Permite ventanas emergentes.");
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><style>'+document.getElementById("rx-style").textContent+'</style></head><body>'+_reciboHTML(f,r)+'</body></html>');w.document.close();setTimeout(()=>{w.focus();w.print();},300);
+}
+function _descargarRecibo(fc,fr){
+  const f=folioRegistry.find(x=>x.folio===fc),r=f&&_recibosFolio(f).find(x=>x.folio===fr);if(!r)return;
+  const tmp=document.createElement("div");tmp.style.position="fixed";tmp.style.left="-99999px";tmp.innerHTML=_reciboHTML(f,r);document.body.appendChild(tmp);
+  if(typeof html2pdf!=="undefined"){html2pdf().set({margin:8,filename:r.folio+".pdf",image:{type:"jpeg",quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}}).from(tmp.firstElementChild).save().finally(()=>tmp.remove());}else{tmp.remove();_imprimirRecibo(fc,fr);}
+}
+function _abrirListaRecibos(){
+  document.getElementById("modal-lista-recibos")?.remove();
+  const rows=[];(folioRegistry||[]).filter(f=>!f._deleted).forEach(f=>_recibosFolio(f).forEach(r=>rows.push({f,r})));rows.sort((a,b)=>String(b.r.creadoEn||"").localeCompare(String(a.r.creadoEn||"")));
+  const ov=document.createElement("div");ov.id="modal-lista-recibos";ov.className="rx-list-overlay";
+  const card=document.createElement("div");card.className="rx-list-card";
+  const head=document.createElement("div");head.className="rx-list-head";head.innerHTML='<div><h2>🧾 Recibos</h2><small>'+rows.length+' recibo(s) guardados</small></div>';const close=document.createElement("button");close.textContent="✕";close.onclick=()=>ov.remove();head.appendChild(close);card.appendChild(head);
+  const body=document.createElement("div");body.className="rx-list-body";
+  if(!rows.length){body.innerHTML='<div style="padding:30px;text-align:center;color:#8890a4">Aún no hay recibos.</div>';}
+  rows.forEach(({f,r})=>{
+    const row=document.createElement("div");row.className="rx-list-row";
+    const a=document.createElement("div");a.innerHTML='<b>'+_escRec(r.folio)+'</b><span>'+_escRec(r.fecha)+' · '+_escRec(r.cliente)+'</span><small>'+_escRec(r.asunto||"")+'</small>';
+    const b=document.createElement("div");b.innerHTML='<strong>'+_fmtRecibo(r.totalCobrado)+'</strong><span class="'+(r.status==="pagado"?"rx-s-ok":"rx-s-warn")+'">'+(r.status==="pagado"?"Pagado":"Promesa de pago")+'</span>';
+    const c=document.createElement("div");c.className="rx-list-actions";const v=document.createElement("button");v.textContent="👁 Ver";v.onclick=()=>_verRecibo(f.folio,r.folio);c.appendChild(v);
+    if(r.status==="promesa"){const p=document.createElement("button");p.textContent="✓ Marcar pagado";p.onclick=()=>_marcarReciboPagado(f.folio,r.folio);c.appendChild(p);}
+    row.append(a,b,c);body.appendChild(row);
+  });
+  card.appendChild(body);ov.appendChild(card);document.body.appendChild(ov);
+}
+async function _marcarReciboPagado(fc,fr){
+  const f=folioRegistry.find(x=>x.folio===fc),r=f&&_recibosFolio(f).find(x=>x.folio===fr);if(!f||!r||r.status!=="promesa")return;
+  if(!confirm("¿Confirmar que el recibo "+r.folio+" ya fue pagado por "+_fmtRecibo(r.totalCobrado)+"?"))return;
+  if(typeof _syncURL!=="function"||!_syncURL()){alert("Se requiere conexión con la nube para aplicar el pago sin duplicarlo.");return;}
+  try{
+    const fecha=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
+    const res=await fetch(_syncURL(),{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"registrarPago",cliente:f.cliente,folio:f.folio,fecha,tipo:r.tipoPago||"parcial",monto:r.montoNeto,aplicaciones:(r.aplicaciones||[]).map(a=>({concepto:a.concepto,area:a.area,honorarios:a.honorarios,terceros:a.terceros})),derechosEstado:"no_aplica",derechosMonto:0})});
+    const data=await res.json();if(!data.ok)throw new Error(data.error||"No se pudo registrar");
+    r.status="pagado";r.pagadoEn=new Date().toISOString();f._pagadoFecha=fecha;f._ultimoPago=data.resumen||{};f._m=_mNuevo();_guardarRegistroLocal();renderFolioList();document.getElementById("modal-lista-recibos")?.remove();_abrirListaRecibos();_xlToast("✅ Recibo marcado como pagado y aplicado en el sistema.");
+  }catch(e){alert("No se pudo aplicar el pago: "+e.message);}
+}
+async function abrirModalRegistrarPago(idx,opts={}){
   const f=folioRegistry[idx]; if(!f)return;
   const items=_pagoItems(f);
   if(!items.length){_xlToast("⚠️ No hay conceptos autorizados para aplicar el pago.","#c0392b");return;}
   _xlToast("⏳ Consultando saldos actuales…","#2563a8");
-  let estado={ok:true,conceptos:{},derechosEstado:""};
+  let estado={ok:true,conceptos:{}};
   try{ estado=await _pagoEstadoNube(f,items); if(!estado.ok)throw new Error(estado.error||"No se pudo consultar saldo"); }
-  catch(e){_xlToast("❌ No pude consultar los saldos actuales: "+e.message,"#c0392b");return;}
+  catch(e){estado={ok:false,conceptos:{}};_xlToast("⚠️ Usando historial local de recibos para calcular saldos.","#d97706");}
 
   const saldo=items.map(x=>{
-    const e=(estado.conceptos&&estado.conceptos[x.n])||{};
-    const pagH=Number(e.pagadoH||0), pagT=Number(e.pagadoT||0);
+    const e=(estado.conceptos&&estado.conceptos[x.n])||{},local=_reciboPagadoPrevio(f,x);
+    const pagH=estado.ok?Number(e.pagadoH||0):local.h,pagT=estado.ok?Number(e.pagadoT||0):local.t;
     return {...x,pagH,pagT,saldoH:Math.max(x.h-pagH,0),saldoT:Math.max(x.t-pagT,0)};
   });
   const totalSaldo=saldo.reduce((s,x)=>s+x.saldoH+x.saldoT,0);
-  const totalDerechos=items.reduce((s,x)=>s+x.d,0);
-  if(totalSaldo<=0 && totalDerechos<=0){_xlToast("✅ Esta cotización ya no tiene saldo pendiente.");return;}
+  if(totalSaldo<=0){_xlToast("✅ Esta cotización ya no tiene saldo pendiente de Honorarios/Terceros.");return;}
 
   document.getElementById("modal-pago")?.remove();
   const m=document.createElement("div");m.id="modal-pago";
   m.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.68);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow:auto";
   const rows=saldo.map((x,i)=>`<tr data-i="${i}">
     <td style="padding:8px;border-bottom:1px solid #e5e7eb"><input type="checkbox" class="pgSel" checked></td>
-    <td style="padding:8px;border-bottom:1px solid #e5e7eb"><b>${_pagoEsc(x.n)}</b><div style="font-size:11px;color:#64748b">Saldo H ${_pagoMoneda(x.saldoH)} · T ${_pagoMoneda(x.saldoT)}${x.d?" · Dtos "+_pagoMoneda(x.d):""}</div></td>
+    <td style="padding:8px;border-bottom:1px solid #e5e7eb"><b>${_pagoEsc(x.n)}</b><div style="font-size:11px;color:#64748b">Saldo H ${_pagoMoneda(x.saldoH)} · T ${_pagoMoneda(x.saldoT)}</div></td>
     <td style="padding:8px;border-bottom:1px solid #e5e7eb"><input class="pgH" type="number" min="0" max="${x.saldoH}" step="0.01" value="0" style="width:110px"></td>
     <td style="padding:8px;border-bottom:1px solid #e5e7eb"><input class="pgT" type="number" min="0" max="${x.saldoT}" step="0.01" value="0" style="width:110px"></td>
   </tr>`).join("");
-  const derBlock=totalDerechos>0?`<div style="margin-top:14px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px">
-    <b>Tesorería detectados: ${_pagoMoneda(totalDerechos)}</b>
-    <div style="margin-top:8px;display:grid;gap:6px">
-      <label><input type="radio" name="pgDer" value="despacho"> El cliente nos entregó también el dinero de los derechos</label>
-      <label><input type="radio" name="pgDer" value="cliente"> El cliente ya pagó los derechos directamente</label>
-      <label><input type="radio" name="pgDer" value="pendiente" checked> El pago de derechos sigue pendiente</label>
-    </div>
-  </div>`:"";
   m.innerHTML=`<div style="width:min(920px,96vw);background:white;border-radius:16px;box-shadow:0 20px 60px #0005;padding:20px;font-family:Arial,sans-serif">
     <div style="display:flex;justify-content:space-between;gap:12px"><div><h2 style="margin:0">💰 Registrar pago</h2><div style="color:#64748b;margin-top:4px">${_pagoEsc(f.folio)} · ${_pagoEsc(f.cliente)}</div></div><button id="pgCerrar" style="border:0;background:#f1f5f9;border-radius:8px;padding:8px 12px;cursor:pointer">✕</button></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px">
       <label>Tipo de pago<select id="pgModo" style="width:100%;padding:8px;margin-top:4px"><option value="liquidacion">Liquidación total</option><option value="parcial">Anticipo / pago parcial</option></select></label>
-      <label>Monto recibido para honorarios/terceros<input id="pgMonto" type="number" min="0" step="0.01" value="${totalSaldo.toFixed(2)}" style="width:100%;box-sizing:border-box;padding:8px;margin-top:4px"></label>
+      <label>Forma de cobro<select id="pgForma" style="width:100%;padding:8px;margin-top:4px"><option value="efectivo">Efectivo</option><option value="factura">Con factura (+ IVA 16%)</option></select></label>
+      <label>Monto base recibido (sin IVA)<input id="pgMonto" type="number" min="0" step="0.01" value="${totalSaldo.toFixed(2)}" style="width:100%;box-sizing:border-box;padding:8px;margin-top:4px"></label>
+      <label>Recibe en el despacho<select id="pgRecibe" style="width:100%;padding:8px;margin-top:4px"><option>Lic. Giovanni Ramos</option><option>Lic. Alejandra Barrera</option></select></label>
+    </div>
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:9px 11px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;">
+      <label style="display:flex;gap:6px;align-items:center;font-size:12px;"><input type="checkbox" id="pgRecibo" ${opts.generarRecibo===false?"":"checked"}> Generar recibo</label>
+      <span id="pgFiscal" style="font-size:11px;color:#64748b;"></span>
+      ${opts.promesa?'<span style="font-size:11px;font-weight:700;color:#b45309;">⏳ Se guardará como PROMESA DE PAGO; no se aplicará hasta marcar el recibo como pagado.</span>':""}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0">
       <button id="pgCompleto" class="btn-comp">✓ Completar seleccionados</button>
@@ -5540,14 +5638,13 @@ async function abrirModalRegistrarPago(idx){
       <button id="pgLimpiar" class="btn-comp">Limpiar</button>
     </div>
     <div style="overflow:auto;max-height:340px;border:1px solid #e5e7eb;border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f8fafc"><th></th><th style="text-align:left;padding:8px">Concepto</th><th>Aplicar a Honorarios</th><th>Aplicar a Terceros</th></tr></thead><tbody>${rows}</tbody></table></div>
-    ${derBlock}
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px"><div id="pgResumen" style="font-weight:700"></div><button id="pgGuardar" style="border:0;background:#166534;color:white;border-radius:10px;padding:11px 18px;font-weight:700;cursor:pointer">CONFIRMAR PAGO</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px"><div id="pgResumen" style="font-weight:700"></div><button id="pgGuardar" style="border:0;background:#166534;color:white;border-radius:10px;padding:11px 18px;font-weight:700;cursor:pointer">${opts.promesa?"GENERAR PROMESA / RECIBO":"CONFIRMAR PAGO"}</button></div>
   </div>`;
   document.body.appendChild(m);
   const q=s=>m.querySelector(s), qa=s=>[...m.querySelectorAll(s)];
-  const monto=q("#pgMonto"), modo=q("#pgModo"), resumen=q("#pgResumen");
-  const actualiza=()=>{const a=qa("tbody tr").reduce((s,tr)=>s+(Number(tr.querySelector(".pgH").value)||0)+(Number(tr.querySelector(".pgT").value)||0),0);resumen.textContent="Aplicado: "+_pagoMoneda(a)+" · Recibido: "+_pagoMoneda(Number(monto.value)||0);return a;};
-  qa("input").forEach(x=>x.addEventListener("input",actualiza));
+  const monto=q("#pgMonto"), modo=q("#pgModo"), forma=q("#pgForma"), resumen=q("#pgResumen"), fiscal=q("#pgFiscal");
+  const actualiza=()=>{const a=qa("tbody tr").reduce((s,tr)=>s+(Number(tr.querySelector(".pgH").value)||0)+(Number(tr.querySelector(".pgT").value)||0),0);const base=Number(monto.value)||0,iva=forma.value==="factura"?Math.round(base*.16*100)/100:0,cobro=base+iva;resumen.textContent="Aplicado: "+_pagoMoneda(a)+" · Base: "+_pagoMoneda(base)+" · Cobro total: "+_pagoMoneda(cobro);fiscal.textContent=forma.value==="factura"?"Factura: subtotal "+_pagoMoneda(base)+" + IVA "+_pagoMoneda(iva):"Efectivo: sin IVA";return a;};
+  qa("input").forEach(x=>x.addEventListener("input",actualiza)); forma.addEventListener("change",actualiza);
   q("#pgCerrar").onclick=()=>m.remove();
   modo.onchange=()=>{if(modo.value==="liquidacion"){monto.value=totalSaldo.toFixed(2);qa("tbody tr").forEach((tr,i)=>{tr.querySelector(".pgSel").checked=true;tr.querySelector(".pgH").value=saldo[i].saldoH;tr.querySelector(".pgT").value=saldo[i].saldoT;});}else{qa("tbody tr").forEach(tr=>{tr.querySelector(".pgH").value=0;tr.querySelector(".pgT").value=0;});monto.value="";}actualiza();};
   q("#pgLimpiar").onclick=()=>{qa("tbody tr").forEach(tr=>{tr.querySelector(".pgH").value=0;tr.querySelector(".pgT").value=0;});actualiza();};
@@ -5555,21 +5652,28 @@ async function abrirModalRegistrarPago(idx){
   q("#pgProporcional").onclick=()=>{let disp=Number(monto.value)||0;const eleg=qa("tbody tr").map((tr,i)=>({tr,i,base:tr.querySelector(".pgSel").checked?(saldo[i].saldoH+saldo[i].saldoT):0})).filter(x=>x.base>0);const base=eleg.reduce((s,x)=>s+x.base,0);let asign=0;eleg.forEach((x,j)=>{let v=j===eleg.length-1?Math.max(disp-asign,0):Math.min(x.base,Math.round((disp*x.base/base)*100)/100);v=Math.min(v,x.base);let h=Math.min(saldo[x.i].saldoH,v),t=Math.min(saldo[x.i].saldoT,Math.max(v-h,0));x.tr.querySelector(".pgH").value=h.toFixed(2);x.tr.querySelector(".pgT").value=t.toFixed(2);asign+=h+t;});actualiza();};
   q("#pgAuto").onclick=()=>{let rem=Number(monto.value)||0;qa("tbody tr").forEach((tr,i)=>{let h=0,t=0;if(tr.querySelector(".pgSel").checked&&rem>0){h=Math.min(saldo[i].saldoH,rem);rem-=h;t=Math.min(saldo[i].saldoT,rem);rem-=t;}tr.querySelector(".pgH").value=h.toFixed(2);tr.querySelector(".pgT").value=t.toFixed(2);});actualiza();};
   q("#pgGuardar").onclick=async()=>{
-    const recibido=Number(monto.value)||0, aplicado=actualiza();
-    if(recibido<0.01 && totalDerechos<=0){alert("Captura un monto recibido.");return;}
-    if(Math.abs(aplicado-recibido)>0.01){alert("La suma aplicada debe ser exactamente igual al monto recibido.\n\nAplicado: "+_pagoMoneda(aplicado)+"\nRecibido: "+_pagoMoneda(recibido));return;}
-    const aplicaciones=qa("tbody tr").map((tr,i)=>({concepto:saldo[i].n,area:saldo[i].area,honorarios:Number(tr.querySelector(".pgH").value)||0,terceros:Number(tr.querySelector(".pgT").value)||0})).filter(x=>x.honorarios>0||x.terceros>0);
-    const derechosEstado=totalDerechos?((q('input[name="pgDer"]:checked')||{}).value||"pendiente"):"no_aplica";
-    const fecha=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
-    if(!confirm("Registrar este pago por "+_pagoMoneda(recibido)+(derechosEstado==="despacho"?" + "+_pagoMoneda(totalDerechos)+" de derechos":"")+"?"))return;
-    q("#pgGuardar").disabled=true;q("#pgGuardar").textContent="Guardando…";
+    const recibido=Number(monto.value)||0,aplicado=actualiza();
+    if(recibido<0.01){alert("Captura un monto recibido.");return;}
+    if(Math.abs(aplicado-recibido)>0.01){alert("La suma aplicada debe ser exactamente igual al monto base recibido.\n\nAplicado: "+_pagoMoneda(aplicado)+"\nBase recibida: "+_pagoMoneda(recibido));return;}
+    const aplicaciones=qa("tbody tr").map((tr,i)=>({itemKey:_reciboKeyItem(saldo[i]),concepto:saldo[i].n,area:saldo[i].area,honorarios:Number(tr.querySelector(".pgH").value)||0,terceros:Number(tr.querySelector(".pgT").value)||0})).filter(x=>x.honorarios>0||x.terceros>0);
+    const fecha=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}),formaPago=forma.value,totalCobrado=recibido*(formaPago==="factura"?1.16:1);
+    if(!confirm((opts.promesa?"Guardar PROMESA DE PAGO por ":"Registrar pago por ")+_pagoMoneda(totalCobrado)+"?\n\nTesorería queda excluida."))return;
+    q("#pgGuardar").disabled=true;q("#pgGuardar").textContent=opts.promesa?"Guardando promesa…":"Guardando…";
     try{
-      const res=await fetch(_syncURL(),{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"registrarPago",cliente:f.cliente,folio:f.folio,fecha,tipo:modo.value,monto:recibido,aplicaciones,derechosEstado,derechosMonto:totalDerechos})});
-      const data=await res.json();if(!data.ok)throw new Error(data.error||"No se pudo registrar");
-      f._pagadoFecha=fecha;f._ultimoPago=data.resumen||{};f._m=_mNuevo();_guardarRegistroLocal();renderFolioList();m.remove();
-      _xlToast("✅ Pago registrado. "+(data.etiqueta||"")+" · "+_pagoMoneda(recibido));
-    }catch(e){q("#pgGuardar").disabled=false;q("#pgGuardar").textContent="CONFIRMAR PAGO";alert("No se pudo registrar el pago: "+e.message);}
+      let data={ok:true,resumen:{}};
+      if(!opts.promesa){
+        if(typeof _syncURL!=="function"||!_syncURL())throw new Error("Se requiere conexión con la nube para aplicar el pago.");
+        const res=await fetch(_syncURL(),{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"registrarPago",cliente:f.cliente,folio:f.folio,fecha,tipo:modo.value,monto:recibido,aplicaciones:aplicaciones.map(a=>({concepto:a.concepto,area:a.area,honorarios:a.honorarios,terceros:a.terceros})),derechosEstado:"no_aplica",derechosMonto:0})});
+        data=await res.json();if(!data.ok)throw new Error(data.error||"No se pudo registrar");
+        f._pagadoFecha=fecha;f._ultimoPago=data.resumen||{};
+      }
+      let rec=null;
+      if(q("#pgRecibo").checked){rec=_guardarReciboDesdePago(f,items,aplicaciones,{forma:formaPago,montoNeto:recibido,recibe:q("#pgRecibe").value,promesa:!!opts.promesa});rec.tipoPago=modo.value;}
+      else{f._m=_mNuevo();_guardarRegistroLocal();}
+      renderFolioList();m.remove();if(rec)_verRecibo(f.folio,rec.folio);_xlToast(opts.promesa?"✅ Promesa de pago guardada.":"✅ Pago registrado. "+_pagoMoneda(totalCobrado));
+    }catch(e){q("#pgGuardar").disabled=false;q("#pgGuardar").textContent=opts.promesa?"GENERAR PROMESA / RECIBO":"CONFIRMAR PAGO";alert("No se pudo registrar: "+e.message);}
   };
+  if(opts.liquidar){modo.value="liquidacion";}else{modo.value="parcial";}
   modo.dispatchEvent(new Event("change"));
 }
 
@@ -5759,7 +5863,17 @@ function abrirModalAutorizacion(idx){
       '<label style="display:flex;align-items:flex-start;gap:8px;font-size:11.5px;color:#1a1f2e;cursor:pointer;"><input type="radio" name="ma-modo" value="anticipo" style="accent-color:#2563a8;margin-top:2px;" onchange="document.getElementById(\'ma-anticipo-wrap\').style.display=this.checked?\'block\':\'none\'"'+((ord.modo==="anticipo")?" checked":"")+'><span><b>3. Con ANTICIPO (pago parcial)</b><br><span style="font-size:10px;color:#4a5066;">En su hoja queda como Anticipo con monto y fecha; el área lo ve como "PAGO DE ANTICIPO"</span></span></label>'+
       '<div id="ma-anticipo-wrap" style="display:'+(ord.modo==="anticipo"?"block":"none")+';margin-top:8px;padding-left:24px;"><label style="display:block;font-size:10px;font-weight:600;color:#2563a8;margin-bottom:3px;">MONTO DEL ANTICIPO ($)</label><input id="ma-anticipo-monto" value="'+_escHtml(ord.anticipoMonto||"")+'" placeholder="Ej. 8000" style="width:160px;border:1px solid #c8dcf5;border-radius:5px;padding:7px 10px;font-size:13px;outline:none;"></div>'+
     '</div>'+
-    '<div class="maut-conc"><div class="maut-conc-h">Conceptos autorizados — palomita = se transcribe, sin palomita = NO se transcribe</div>'+conceptosHtml+'</div>'+
+    '<div style="border:1px solid #d1d5db;background:#fafafa;border-radius:8px;padding:11px 12px;margin:6px 0 12px;">'+
+      '<div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#374151;margin-bottom:8px;">Situación de cobro</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">'+
+        '<label style="font-size:11px;display:flex;gap:6px;align-items:center;"><input type="radio" name="ma-cobro" value="liquida"> Cliente liquida</label>'+
+        '<label style="font-size:11px;display:flex;gap:6px;align-items:center;"><input type="radio" name="ma-cobro" value="pago"> Registrar pago / anticipo</label>'+
+        '<label style="font-size:11px;display:flex;gap:6px;align-items:center;"><input type="radio" name="ma-cobro" value="promesa"> Promesa de pago</label>'+
+        '<label style="font-size:11px;display:flex;gap:6px;align-items:center;"><input type="radio" name="ma-cobro" value="sin_pago" checked> Aún no paga</label>'+
+      '</div>'+
+      '<label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-size:11px;color:#374151;"><input type="checkbox" id="ma-generar-recibo" checked> Generar recibo cuando corresponda</label>'+
+      '<div style="font-size:9.5px;color:#6b7280;margin-top:5px;">Cliente liquida = Honorarios + Terceros. Tesorería nunca se considera dinero recibido por el despacho.</div>'+
+    '</div>'+    '<div class="maut-conc"><div class="maut-conc-h">Conceptos autorizados — palomita = se transcribe, sin palomita = NO se transcribe</div>'+conceptosHtml+'</div>'+
     '<div class="maut-acts">'+
     '<button class="maut-no" onclick="cerrarModalAut()">Cancelar</button>'+
     '<button class="maut-ok" onclick="confirmarAutorizacion('+idx+')">✓ Autorizar y generar Orden de Servicio</button>'+
@@ -5820,6 +5934,9 @@ function confirmarAutorizacion(idx){
   f.asuntoOrden=asuntoVal;
   f._modoTrans=modo;
   f._anticipoMonto=antMonto;
+  const cobroEl=document.querySelector('#modal-aut input[name="ma-cobro"]:checked');
+  f._situacionCobro=cobroEl?cobroEl.value:"sin_pago";
+  const generarRecibo=!!document.getElementById("ma-generar-recibo")?.checked;
   f.status="autorizada";
   f._fpAutorizada=_fpSnapshot(f.snapshot);
   f._m=_mNuevo();
@@ -5828,6 +5945,9 @@ function confirmarAutorizacion(idx){
   renderFolioList();
   _apiAutorizar(idx);
   setTimeout(()=>verOrdenServicio(idx),400);
+  if(f._situacionCobro!=="sin_pago"){
+    setTimeout(()=>abrirModalRegistrarPago(idx,{origen:"autorizacion",liquidar:f._situacionCobro==="liquida",promesa:f._situacionCobro==="promesa",generarRecibo}),850);
+  }
 }
 
 function _nombreOrden(f){
