@@ -2209,7 +2209,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v50 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v51 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -2385,25 +2385,68 @@ let _folioAsignacionPromise=null;
 function _folioTexto(){ return currentFolio || "SIN FOLIO — se asigna al guardar"; }
 async function _asegurarFolioGuardado(){
   if(currentFolio) return currentFolio;
-  // Blindaje contra doble toque/clic: mientras un folio se está solicitando,
-  // todos los guardados esperan LA MISMA promesa y reciben el mismo folio.
   if(_folioAsignacionPromise) return _folioAsignacionPromise;
-  if(!SYNC_URL) throw new Error("Se necesita conexión para asignar un folio");
+
+  // Usar la MISMA URL de nube configurada por el sistema. Antes esta rutina
+  // usaba únicamente la constante fija, lo que podía provocar "Failed to fetch"
+  // si la URL configurada/correcta era distinta.
+  const url=(typeof _syncURL==="function" ? _syncURL() : SYNC_URL) || SYNC_URL;
+  if(!url) throw new Error("Se necesita conexión para asignar un folio");
+
   _folioAsignacionPromise=(async()=>{
     const year=new Date().getFullYear();
-    const r=await fetch(SYNC_URL,{
-      method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify({action:"nextFolio",year:year})
-    });
-    const j=await r.json();
-    if(!j||!j.ok||!j.folio) throw new Error((j&&j.error)||"No se pudo asignar folio");
-    // Otro flujo pudo restaurar un folio mientras esperaba la red; si ya existe, conservarlo.
-    if(!currentFolio) currentFolio=j.folio;
-    _lsSet(`ma_folio_${year}`,String(j.numero||0));
-    const el=document.getElementById("folio"); if(el) el.textContent=currentFolio;
-    const pv=document.getElementById("pv-folio"); if(pv) pv.textContent="Folio: "+currentFolio+" | "+new Date().toLocaleDateString("es-MX");
-    return currentFolio;
+    let ultimoError=null;
+
+    // Reintento corto: Apps Script a veces tarda en responder al primer intento.
+    for(let intento=1; intento<=3; intento++){
+      try{
+        _setPill("sync","⟳ Asignando folio… intento "+intento+"/3");
+        const ctrl=new AbortController();
+        const timer=setTimeout(()=>ctrl.abort(),12000);
+        const r=await fetch(url,{
+          method:"POST",
+          headers:{"Content-Type":"text/plain;charset=utf-8"},
+          body:JSON.stringify({action:"nextFolio",year:year}),
+          signal:ctrl.signal
+        });
+        clearTimeout(timer);
+
+        if(!r.ok) throw new Error("Servidor respondió HTTP "+r.status);
+        const txt=await r.text();
+        let j=null;
+        try{j=JSON.parse(txt);}catch(e){throw new Error("Respuesta inválida del servidor");}
+        if(!j||!j.ok||!j.folio) throw new Error((j&&j.error)||"No se pudo asignar folio");
+
+        if(!currentFolio) currentFolio=j.folio;
+        _lsSet(`ma_folio_${year}`,String(j.numero||0));
+
+        const el=document.getElementById("folio");
+        if(el)el.textContent=currentFolio;
+        const pv=document.getElementById("pv-folio");
+        if(pv)pv.textContent="Folio: "+currentFolio+" | "+new Date().toLocaleDateString("es-MX");
+
+        _ultimoOk=true;
+        _actualizarPill();
+        return currentFolio;
+      }catch(e){
+        ultimoError=e;
+        await new Promise(r=>setTimeout(r,700*intento));
+      }
+    }
+
+    _ultimoOk=false;
+    _actualizarPill();
+    const msg=(ultimoError&&ultimoError.name==="AbortError")
+      ? "La conexión con Google Sheets tardó demasiado."
+      : ((ultimoError&&ultimoError.message)||"Failed to fetch");
+
+    throw new Error(
+      "No pude asignar el folio porque no respondió la nube. "+
+      "La cotización NO se perdió: sigue abierta en pantalla. "+
+      "Revisa el indicador de conexión y vuelve a presionar Guardar. Detalle: "+msg
+    );
   })();
+
   try{return await _folioAsignacionPromise;}
   finally{_folioAsignacionPromise=null;}
 }
@@ -3559,7 +3602,16 @@ function _checarReautorizacion(idx){
 }
 async function guardarPDFEnFolio(){
   // Guardar explícitamente es el momento en que se asigna/consume el folio.
-  try{ await guardarFolioEnRegistry(); }catch(e){ _xlToast("⚠️ "+(e.message||e),"#c0392b"); return; }
+  try{
+    await guardarFolioEnRegistry();
+  }catch(e){
+    const msg=(e&&e.message)||String(e);
+    _xlToast("⚠️ No se guardó: "+msg,"#c0392b");
+    if(/fetch|conexi|nube|folio/i.test(msg)){
+      setTimeout(()=>alert("No se pudo guardar en este momento porque falló la conexión con la nube.\n\nLa cotización sigue abierta y no se borró. Vuelve a intentar Guardar cuando el indicador de conexión esté activo.\n\nDetalle: "+msg),120);
+    }
+    return;
+  }
   const idx=folioRegistry.findIndex(f=>f.folio===currentFolio);
   if(idx<0){
     const toast=document.createElement("div");
