@@ -2209,7 +2209,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v51 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v52 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -4173,6 +4173,8 @@ function renderFolioList(){
     const pagadoBtn=isAut?'<button class="btn-comp" style="background:#f0f9f4;border-color:#bbf7d0;color:#166534;" onclick="marcarPagadoEC('+idx+')" title="Registrar y distribuir un pago">💰 Registrar pago</button>':"";
     const ordenBtn=isAut?'<button class="btn-comp" style="background:#fdf6ec;border-color:#e8d5b0;color:#b07d2e;" onclick="verOrdenServicio('+idx+')" title="Ver / descargar la Orden de Servicio">📄 Orden</button>':"";
     const cobroBtn=isAut?'<button class="btn-comp" style="background:#eefbf3;border-color:#bbf7d0;color:#166534;font-weight:700;" onclick="abrirModalRegistrarPago('+idx+',{origen:&quot;manual&quot;})" title="Registrar pago, anticipo o generar recibo">💳 Cobro</button>':"";
+    const recibosCount=Array.isArray(f._recibos)?f._recibos.length:0;
+    const recibosBtn=isAut?'<button class="btn-comp" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;" onclick="_abrirRecibosDeFolio('+idx+')" title="Ver recibos de esta cotización">🧾 '+recibosCount+'</button>':"";
     const archiveBtn=f._archived
       ? '<button class="btn-comp" style="background:#eef2ff;border-color:#c7d2fe;color:#3730a3;font-weight:700;" onclick="archivarFolio('+idx+')" title="Regresar esta cotización al seguimiento activo">📂 Restaurar</button>'
       : '<button class="btn-comp" style="background:#f3f4f6;border-color:#d1d5db;color:#4b5563;" onclick="archivarFolio('+idx+')" title="Archivar sin borrar y conservar su estatus">📦 Archivar</button>';
@@ -4193,7 +4195,7 @@ function renderFolioList(){
       '<div style="display:flex;gap:4px;flex-wrap:wrap;">'+
         (f._archived
           ? verBtn+archiveBtn+delBtn
-          : verBtn+editBtn+compBtn+ecBtn+pagadoBtn+ordenBtn+cobroBtn+pcBtn+archiveBtn+delBtn)+
+          : verBtn+editBtn+compBtn+ecBtn+pagadoBtn+ordenBtn+cobroBtn+recibosBtn+pcBtn+archiveBtn+delBtn)+
       '</div>';
     list.appendChild(div);
   });
@@ -5615,9 +5617,22 @@ function _descargarRecibo(fc,fr){
   const tmp=document.createElement("div");tmp.style.position="fixed";tmp.style.left="-99999px";tmp.innerHTML=_reciboHTML(f,r);document.body.appendChild(tmp);
   if(typeof html2pdf!=="undefined"){html2pdf().set({margin:8,filename:r.folio+".pdf",image:{type:"jpeg",quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}}).from(tmp.firstElementChild).save().finally(()=>tmp.remove());}else{tmp.remove();_imprimirRecibo(fc,fr);}
 }
-function _abrirListaRecibos(){
+
+function _abrirRecibosDeFolio(idx){
+  const f=folioRegistry[idx];if(!f)return;
+  const arr=_recibosFolio(f);
+  if(!arr.length){
+    if(confirm("Esta cotización todavía no tiene recibos.\n\n¿Quieres registrar un pago o promesa y generar el primer recibo ahora?")){
+      abrirModalRegistrarPago(idx,{origen:"recibos",generarRecibo:true});
+    }
+    return;
+  }
+  _abrirListaRecibos(f.folio);
+}
+
+function _abrirListaRecibos(folioFiltro){
   document.getElementById("modal-lista-recibos")?.remove();
-  const rows=[];(folioRegistry||[]).filter(f=>!f._deleted).forEach(f=>_recibosFolio(f).forEach(r=>rows.push({f,r})));rows.sort((a,b)=>String(b.r.creadoEn||"").localeCompare(String(a.r.creadoEn||"")));
+  const rows=[];(folioRegistry||[]).filter(f=>!f._deleted&&(!folioFiltro||f.folio===folioFiltro)).forEach(f=>_recibosFolio(f).forEach(r=>rows.push({f,r})));rows.sort((a,b)=>String(b.r.creadoEn||"").localeCompare(String(a.r.creadoEn||"")));
   const ov=document.createElement("div");ov.id="modal-lista-recibos";ov.className="rx-list-overlay";
   const card=document.createElement("div");card.className="rx-list-card";
   const head=document.createElement("div");head.className="rx-list-head";head.innerHTML='<div><h2>🧾 Recibos</h2><small>'+rows.length+' recibo(s) guardados</small></div>';const close=document.createElement("button");close.textContent="✕";close.onclick=()=>ov.remove();head.appendChild(close);card.appendChild(head);
@@ -5911,7 +5926,7 @@ function abrirModalAutorizacion(idx){
     '<div style="border:1px solid #c8dcf5;background:#eff5fd;border-radius:8px;padding:10px 12px;margin:6px 0 12px;">'+
       '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2563a8;margin-bottom:7px;">¿Cómo transcribir?</div>'+
       '<label style="display:flex;align-items:flex-start;gap:8px;font-size:11.5px;color:#1a1f2e;cursor:pointer;margin-bottom:6px;"><input type="radio" name="ma-modo" value="solo" style="accent-color:#2563a8;margin-top:2px;"'+((ord.modo==="solo")?" checked":"")+'><span><b>1. Solo estado de cuenta</b><br><span style="font-size:10px;color:#4a5066;">Queda Pendiente en su hoja; NO pasa a Actividades todavía</span></span></label>'+
-      '<label style="display:flex;align-items:flex-start;gap:8px;font-size:11.5px;color:#1a1f2e;cursor:pointer;margin-bottom:6px;"><input type="radio" name="ma-modo" value="promesa" style="accent-color:#2563a8;margin-top:2px;"'+((ord.modo===undefined||ord.modo==="promesa")?" checked":"")+'><span><b>2. Estado de cuenta + Actividades — PROMESA DE PAGO</b><br><span style="font-size:10px;color:#4a5066;">Pendiente en su hoja; el área lo ve como "PROMESA DE PAGO"</span></span></label>'+
+      '<label style="display:flex;align-items:flex-start;gap:8px;font-size:11.5px;color:#1a1f2e;cursor:pointer;margin-bottom:6px;"><input type="radio" name="ma-modo" value="promesa" style="accent-color:#2563a8;margin-top:2px;"'+((ord.modo===undefined||ord.modo==="promesa")?" checked":"")+'><span><b>2. Estado de cuenta + Actividades — PROMESA DE PAGO</b><br><span style="font-size:10px;color:#4a5066;">Pendiente en su hoja; el área lo ve como "PROMESA DE PAGO" y el sistema preparará un recibo NO PAGADO.</span></span></label>'+
       '<label style="display:flex;align-items:flex-start;gap:8px;font-size:11.5px;color:#1a1f2e;cursor:pointer;"><input type="radio" name="ma-modo" value="anticipo" style="accent-color:#2563a8;margin-top:2px;" onchange="document.getElementById(\'ma-anticipo-wrap\').style.display=this.checked?\'block\':\'none\'"'+((ord.modo==="anticipo")?" checked":"")+'><span><b>3. Con ANTICIPO (pago parcial)</b><br><span style="font-size:10px;color:#4a5066;">En su hoja queda como Anticipo con monto y fecha; el área lo ve como "PAGO DE ANTICIPO"</span></span></label>'+
       '<div id="ma-anticipo-wrap" style="display:'+(ord.modo==="anticipo"?"block":"none")+';margin-top:8px;padding-left:24px;"><label style="display:block;font-size:10px;font-weight:600;color:#2563a8;margin-bottom:3px;">MONTO DEL ANTICIPO ($)</label><input id="ma-anticipo-monto" value="'+_escHtml(ord.anticipoMonto||"")+'" placeholder="Ej. 8000" style="width:160px;border:1px solid #c8dcf5;border-radius:5px;padding:7px 10px;font-size:13px;outline:none;"></div>'+
     '</div>'+
@@ -5919,20 +5934,43 @@ function abrirModalAutorizacion(idx){
       '<div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#374151;margin-bottom:8px;">Situación de cobro</div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">'+
         '<label style="font-size:11px;display:flex;gap:6px;align-items:center;"><input type="radio" name="ma-cobro" value="liquida"> Cliente liquida</label>'+
-        '<label style="font-size:11px;display:flex;gap:6px;align-items:center;"><input type="radio" name="ma-cobro" value="pago"> Registrar pago / anticipo</label>'+
-        '<label style="font-size:11px;display:flex;gap:6px;align-items:center;"><input type="radio" name="ma-cobro" value="promesa"> Promesa de pago</label>'+
-        '<label style="font-size:11px;display:flex;gap:6px;align-items:center;"><input type="radio" name="ma-cobro" value="sin_pago" checked> Aún no paga</label>'+
+        '<label style="font-size:11px;display:flex;gap:6px;align-items:center;"><input type="radio" name="ma-cobro" value="pago"'+(ord.modo==="anticipo"?" checked":"")+'> Registrar pago / anticipo</label>'+
+        '<label style="font-size:11px;display:flex;gap:6px;align-items:center;"><input type="radio" name="ma-cobro" value="promesa"'+((ord.modo===undefined||ord.modo==="promesa")?" checked":"")+'> Promesa de pago</label>'+
+        '<label style="font-size:11px;display:flex;gap:6px;align-items:center;"><input type="radio" name="ma-cobro" value="sin_pago"'+(ord.modo==="solo"?" checked":"")+'> Aún no paga</label>'+
       '</div>'+
       '<label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-size:11px;color:#374151;"><input type="checkbox" id="ma-generar-recibo" checked> Generar recibo cuando corresponda</label>'+
       '<div style="font-size:9.5px;color:#6b7280;margin-top:5px;">Cliente liquida = Honorarios + Terceros. Tesorería nunca se considera dinero recibido por el despacho.</div>'+
     '</div>'+    '<div class="maut-conc"><div class="maut-conc-h">Conceptos autorizados — palomita = se transcribe, sin palomita = NO se transcribe</div>'+conceptosHtml+'</div>'+
     '<div class="maut-acts">'+
     '<button class="maut-no" onclick="cerrarModalAut()">Cancelar</button>'+
-    '<button class="maut-ok" onclick="confirmarAutorizacion('+idx+')">✓ Autorizar y generar Orden de Servicio</button>'+
+    '<button class="maut-ok" onclick="confirmarAutorizacion('+idx+')">✓ Autorizar y continuar con cobro / recibo</button>'+
     '</div></div>';
 
   document.body.appendChild(modal);
   modal.classList.add("open");
+
+  // Mantener coherentes las dos decisiones:
+  // Promesa en transcripción => Promesa de cobro + recibo pendiente.
+  // Anticipo en transcripción => Registrar pago/anticipo.
+  // Solo estado de cuenta => Aún no paga.
+  const syncModoCobro=()=>{
+    const modo=document.querySelector('#modal-aut input[name="ma-modo"]:checked')?.value||"";
+    const mapa={promesa:"promesa",anticipo:"pago",solo:"sin_pago"};
+    const c=document.querySelector('#modal-aut input[name="ma-cobro"][value="'+(mapa[modo]||"sin_pago")+'"]');
+    if(c)c.checked=true;
+    const rec=document.getElementById("ma-generar-recibo");
+    if(rec&&(modo==="promesa"||modo==="anticipo"))rec.checked=true;
+  };
+  modal.querySelectorAll('input[name="ma-modo"]').forEach(x=>x.addEventListener("change",syncModoCobro));
+
+  // Si el usuario cambia Situación de cobro manualmente, respetamos su elección;
+  // pero Promesa siempre mantiene activada la generación de recibo.
+  modal.querySelectorAll('input[name="ma-cobro"]').forEach(x=>x.addEventListener("change",()=>{
+    if(x.checked&&x.value==="promesa"){
+      const rec=document.getElementById("ma-generar-recibo");if(rec)rec.checked=true;
+    }
+  }));
+
   modal.addEventListener("click",e=>{if(e.target===modal)cerrarModalAut();});
 }
 
@@ -5987,7 +6025,12 @@ function confirmarAutorizacion(idx){
   f._modoTrans=modo;
   f._anticipoMonto=antMonto;
   const cobroEl=document.querySelector('#modal-aut input[name="ma-cobro"]:checked');
-  f._situacionCobro=cobroEl?cobroEl.value:"sin_pago";
+  // Blindaje: una PROMESA de la sección "Cómo transcribir" necesariamente
+  // crea una promesa de cobro; un ANTICIPO abre el registro de pago.
+  let situacion=cobroEl?cobroEl.value:"sin_pago";
+  if(modo==="promesa" && situacion==="sin_pago")situacion="promesa";
+  if(modo==="anticipo" && situacion==="sin_pago")situacion="pago";
+  f._situacionCobro=situacion;
   const generarRecibo=!!document.getElementById("ma-generar-recibo")?.checked;
   f.status="autorizada";
   f._fpAutorizada=_fpSnapshot(f.snapshot);
