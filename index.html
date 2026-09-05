@@ -2209,7 +2209,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v53 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v54 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -5579,11 +5579,35 @@ function _nombreConceptoRecibo(f,item,aplicado){
   return "Abono de "+item.n;
 }
 function _guardarReciboDesdePago(f,items,aplicaciones,opts){
+  // IMPORTANTE: durante un fetch la sincronización puede refrescar folioRegistry.
+  // Por eso siempre volvemos a tomar el objeto VIVO del registro antes de guardar.
+  const live=(folioRegistry||[]).find(x=>x&&x.folio===f.folio)||f;
   const forma=opts.forma||"efectivo",neto=Number(opts.montoNeto||0),iva=forma==="factura"?Math.round(neto*.16*100)/100:0,totalCobrado=Math.round((neto+iva)*100)/100;
   const porItem={};aplicaciones.forEach(a=>{if(!porItem[a.itemKey])porItem[a.itemKey]={h:0,t:0};porItem[a.itemKey].h+=Number(a.honorarios||0);porItem[a.itemKey].t+=Number(a.terceros||0);});
-  const conceptos=items.map(x=>{const key=_reciboKeyItem(x),p=porItem[key];if(!p||p.h+p.t<=0)return null;const n=p.h+p.t;return {itemKey:key,nombre:_nombreConceptoRecibo(f,x,n),nombreBase:x.n,area:x.area,honorarios:p.h,terceros:p.t,neto:n};}).filter(Boolean);
-  const r={folio:_nextReciboFolio(f),cotizacion:f.folio,fecha:new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}),creadoEn:new Date().toISOString(),cliente:f.cliente||"",domicilio:(f.snapshot&&f.snapshot.c2)||f.domicilio||"",asunto:f.asuntoOrden||f.asunto||"",forma,recibe:opts.recibe||"Lic. Giovanni Ramos",status:opts.promesa?"promesa":"pagado",montoNeto:neto,iva,totalCobrado,aplicaciones:aplicaciones.map(a=>({...a})),conceptos};
-  _recibosFolio(f).push(r);f._m=_mNuevo();_guardarRegistroLocal();return r;
+  const conceptos=items.map(x=>{const key=_reciboKeyItem(x),p=porItem[key];if(!p||p.h+p.t<=0)return null;const n=p.h+p.t;return {itemKey:key,nombre:_nombreConceptoRecibo(live,x,n),nombreBase:x.n,area:x.area,honorarios:p.h,terceros:p.t,neto:n};}).filter(Boolean);
+  const r={
+    folio:_nextReciboFolio(live),cotizacion:live.folio,
+    fecha:new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}),
+    creadoEn:new Date().toISOString(),cliente:live.cliente||"",
+    domicilio:(live.snapshot&&live.snapshot.c2)||live.domicilio||"",
+    asunto:live.asuntoOrden||live.asunto||"",forma,
+    recibe:opts.recibe||"Lic. Giovanni Ramos",
+    status:opts.promesa?"promesa":"pagado",
+    montoNeto:neto,iva,totalCobrado,
+    aplicaciones:aplicaciones.map(a=>({...a})),conceptos
+  };
+  _recibosFolio(live).push(r);
+  live._m=_mNuevo();
+  _guardarRegistroLocal();
+
+  // Forzar subida inmediata del folio con el recibo; no esperar al timer normal.
+  try{
+    if(typeof _syncRegistryEntry==="function" && typeof _syncURL==="function" && _syncURL()){
+      _regPendientes.add(live.folio); _guardarRegPend();
+      _syncRegistryEntry(live.folio,true);
+    }
+  }catch(e){console.warn("Recibo guardado localmente; sincronización pendiente.",e);}
+  return r;
 }
 function _fmtRecibo(n){return Number(n||0).toLocaleString("es-MX",{style:"currency",currency:"MXN",minimumFractionDigits:2});}
 function _escRec(s){return _escHtml(s||"");}
@@ -5600,10 +5624,11 @@ function _verRecibo(folioCot,folioRec){
   document.getElementById("modal-recibo")?.remove();
   const ov=document.createElement("div");ov.id="modal-recibo";ov.className="rx-overlay";
   const tools=document.createElement("div");tools.className="rx-tools";
-  const b1=document.createElement("button");b1.textContent="⬇ PDF";b1.onclick=()=>_descargarRecibo(f.folio,r.folio);
+  const b1=document.createElement("button");b1.textContent="💾 Guardar PDF";b1.onclick=()=>_descargarRecibo(f.folio,r.folio);
   const b2=document.createElement("button");b2.textContent="🖨 Imprimir";b2.onclick=()=>_imprimirRecibo(f.folio,r.folio);
-  const b3=document.createElement("button");b3.textContent="✕ Cerrar";b3.onclick=()=>ov.remove();
-  tools.append(b1,b2,b3);ov.appendChild(tools);
+  const b3=document.createElement("button");b3.textContent="🧾 Ver todos los recibos";b3.onclick=()=>{ov.remove();_abrirListaRecibos();};
+  const b4=document.createElement("button");b4.textContent="✕ Cerrar";b4.onclick=()=>ov.remove();
+  tools.append(b1,b2,b3,b4);ov.appendChild(tools);
   const holder=document.createElement("div");holder.innerHTML=_reciboHTML(f,r);ov.appendChild(holder.firstElementChild);
   document.body.appendChild(ov);
 }
@@ -5643,7 +5668,11 @@ function _abrirRecibosDeFolio(idx){
 
 function _abrirListaRecibos(folioFiltro){
   document.getElementById("modal-lista-recibos")?.remove();
-  const rows=[];(folioRegistry||[]).filter(f=>!f._deleted&&(!folioFiltro||f.folio===folioFiltro)).forEach(f=>_recibosFolio(f).forEach(r=>rows.push({f,r})));rows.sort((a,b)=>String(b.r.creadoEn||"").localeCompare(String(a.r.creadoEn||"")));
+  const rows=[];
+  (folioRegistry||[]).filter(f=>!f._deleted&&(!folioFiltro||f.folio===folioFiltro)).forEach(f=>{
+    _recibosFolio(f).forEach(r=>rows.push({f,r}));
+  });
+  rows.sort((a,b)=>String(b.r.creadoEn||"").localeCompare(String(a.r.creadoEn||"")));
   const ov=document.createElement("div");ov.id="modal-lista-recibos";ov.className="rx-list-overlay";
   const card=document.createElement("div");card.className="rx-list-card";
   const head=document.createElement("div");head.className="rx-list-head";head.innerHTML='<div><h2>🧾 Recibos</h2><small>'+rows.length+' recibo(s) guardados</small></div>';const close=document.createElement("button");close.textContent="✕";close.onclick=()=>ov.remove();head.appendChild(close);card.appendChild(head);
@@ -5653,7 +5682,7 @@ function _abrirListaRecibos(folioFiltro){
     const row=document.createElement("div");row.className="rx-list-row";
     const a=document.createElement("div");a.innerHTML='<b>'+_escRec(r.folio)+'</b><span>'+_escRec(r.fecha)+' · '+_escRec(r.cliente)+'</span><small>'+_escRec(r.asunto||"")+'</small>';
     const b=document.createElement("div");b.innerHTML='<strong>'+_fmtRecibo(r.totalCobrado)+'</strong><span class="'+(r.status==="pagado"?"rx-s-ok":"rx-s-warn")+'">'+(r.status==="pagado"?"Pagado":"Promesa de pago")+'</span>';
-    const c=document.createElement("div");c.className="rx-list-actions";const v=document.createElement("button");v.textContent="↗ Abrir";v.onclick=()=>{if(!_abrirReciboNuevaPestana(f.folio,r.folio))_verRecibo(f.folio,r.folio);};c.appendChild(v);
+    const c=document.createElement("div");c.className="rx-list-actions";const v=document.createElement("button");v.textContent="👁 Ver";v.onclick=()=>_verRecibo(f.folio,r.folio);c.appendChild(v);
     if(r.status==="promesa"){const p=document.createElement("button");p.textContent="✓ Marcar pagado";p.onclick=()=>_marcarReciboPagado(f.folio,r.folio);c.appendChild(p);}
     row.append(a,b,c);body.appendChild(row);
   });
@@ -5667,7 +5696,20 @@ async function _marcarReciboPagado(fc,fr){
     const fecha=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
     const res=await fetch(_syncURL(),{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"registrarPago",cliente:f.cliente,folio:f.folio,fecha,tipo:r.tipoPago||"parcial",monto:r.montoNeto,aplicaciones:(r.aplicaciones||[]).map(a=>({concepto:a.concepto,area:a.area,honorarios:a.honorarios,terceros:a.terceros})),derechosEstado:"no_aplica",derechosMonto:0})});
     const data=await res.json();if(!data.ok)throw new Error(data.error||"No se pudo registrar");
-    r.status="pagado";r.pagadoEn=new Date().toISOString();f._pagadoFecha=fecha;f._ultimoPago=data.resumen||{};f._m=_mNuevo();_guardarRegistroLocal();renderFolioList();document.getElementById("modal-lista-recibos")?.remove();_abrirListaRecibos();_xlToast("✅ Recibo marcado como pagado y aplicado en el sistema.");
+    const live=(folioRegistry||[]).find(x=>x&&x.folio===fc)||f;
+    const reciboLive=_recibosFolio(live).find(x=>x.folio===fr)||r;
+    reciboLive.status="pagado";reciboLive.pagadoEn=new Date().toISOString();
+    live._pagadoFecha=fecha;live._ultimoPago=data.resumen||{};live._m=_mNuevo();
+    _guardarRegistroLocal();
+    try{
+      if(typeof _syncRegistryEntry==="function"&&_syncURL()){
+        _regPendientes.add(live.folio);_guardarRegPend();_syncRegistryEntry(live.folio,true);
+      }
+    }catch(e){}
+    renderFolioList();
+    document.getElementById("modal-lista-recibos")?.remove();
+    _verRecibo(live.folio,reciboLive.folio);
+    _xlToast("✅ Recibo marcado como pagado y aplicado en el sistema.");
   }catch(e){alert("No se pudo aplicar el pago: "+e.message);}
 }
 async function abrirModalRegistrarPago(idx,opts={}){
@@ -5743,20 +5785,29 @@ async function abrirModalRegistrarPago(idx,opts={}){
         if(typeof _syncURL!=="function"||!_syncURL())throw new Error("Se requiere conexión con la nube para aplicar el pago.");
         const res=await fetch(_syncURL(),{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"registrarPago",cliente:f.cliente,folio:f.folio,fecha,tipo:modo.value,monto:recibido,aplicaciones:aplicaciones.map(a=>({concepto:a.concepto,area:a.area,honorarios:a.honorarios,terceros:a.terceros})),derechosEstado:"no_aplica",derechosMonto:0})});
         data=await res.json();if(!data.ok)throw new Error(data.error||"No se pudo registrar");
-        f._pagadoFecha=fecha;f._ultimoPago=data.resumen||{};
+        const livePago=(folioRegistry||[]).find(x=>x&&x.folio===f.folio)||f;
+        livePago._pagadoFecha=fecha;livePago._ultimoPago=data.resumen||{};
       }
       let rec=null;
-      if(q("#pgRecibo").checked){rec=_guardarReciboDesdePago(f,items,aplicaciones,{forma:formaPago,montoNeto:recibido,recibe:q("#pgRecibe").value,promesa:!!opts.promesa});rec.tipoPago=modo.value;}
-      else{f._m=_mNuevo();_guardarRegistroLocal();}
-      renderFolioList();m.remove();
-      if(rec){
-        const abierta=_abrirReciboNuevaPestana(f.folio,rec.folio);
-        if(!abierta){
-          _verRecibo(f.folio,rec.folio);
-          alert("El recibo fue generado, pero el navegador bloqueó la nueva pestaña. Se abrió dentro del sistema. Permite ventanas emergentes para que se abra automáticamente aparte.");
-        }
+      const live=(folioRegistry||[]).find(x=>x&&x.folio===f.folio)||f;
+      if(q("#pgRecibo").checked){
+        rec=_guardarReciboDesdePago(live,items,aplicaciones,{forma:formaPago,montoNeto:recibido,recibe:q("#pgRecibe").value,promesa:!!opts.promesa});
+        rec.tipoPago=modo.value;
+        live._m=_mNuevo();
+        _guardarRegistroLocal();
+      }else{
+        live._m=_mNuevo();_guardarRegistroLocal();
       }
-      _xlToast(opts.promesa?"✅ Promesa de pago guardada y recibo generado.":"✅ Pago registrado y recibo generado. "+_pagoMoneda(totalCobrado));
+      renderFolioList();m.remove();
+
+      // Sin ventanas emergentes: abrir SIEMPRE el recibo dentro del propio sistema,
+      // igual que el generador de recibos original.
+      if(rec){
+        _verRecibo(live.folio,rec.folio);
+        _xlToast(opts.promesa?"✅ Promesa guardada. Recibo "+rec.folio+" generado.":"✅ Pago registrado. Recibo "+rec.folio+" guardado.");
+      }else{
+        _xlToast(opts.promesa?"✅ Promesa guardada sin recibo.":"✅ Pago registrado sin recibo.");
+      }
     }catch(e){q("#pgGuardar").disabled=false;q("#pgGuardar").textContent=opts.promesa?"GENERAR PROMESA / RECIBO":"CONFIRMAR PAGO";alert("No se pudo registrar: "+e.message);}
   };
   if(opts.liquidar){modo.value="liquidacion";}else{modo.value="parcial";}
