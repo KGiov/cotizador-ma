@@ -2209,7 +2209,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v52 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v53 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -5607,6 +5607,17 @@ function _verRecibo(folioCot,folioRec){
   const holder=document.createElement("div");holder.innerHTML=_reciboHTML(f,r);ov.appendChild(holder.firstElementChild);
   document.body.appendChild(ov);
 }
+
+function _abrirReciboNuevaPestana(fc,fr){
+  const f=folioRegistry.find(x=>x.folio===fc),r=f&&_recibosFolio(f).find(x=>x.folio===fr);
+  if(!f||!r)return false;
+  const w=window.open("","_blank"); if(!w)return false;
+  const css=document.getElementById("rx-style")?.textContent||"";
+  w.document.open();
+  w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+_escRec(r.folio||"Recibo")+'</title><style>'+css+'body{margin:0;background:#eef1f5;padding:18px;font-family:Inter,Arial,sans-serif}.rx-tab-tools{width:min(820px,96vw);margin:0 auto 10px;display:flex;gap:8px;justify-content:flex-end;position:sticky;top:8px;z-index:5}.rx-tab-tools button{border:1px solid #d1d5db;background:#fff;border-radius:7px;padding:9px 13px;font-size:11px;font-weight:800;cursor:pointer}@media print{body{background:#fff;padding:0}.rx-tab-tools{display:none}.rx-page{box-shadow:none}}</style></head><body><div class="rx-tab-tools"><button onclick="window.print()">🖨 Imprimir / Guardar PDF</button><button onclick="window.close()">✕ Cerrar</button></div>'+_reciboHTML(f,r)+'</body></html>');
+  w.document.close(); try{w.focus();}catch(e){} return true;
+}
+
 function _imprimirRecibo(fc,fr){
   const f=folioRegistry.find(x=>x.folio===fc),r=f&&_recibosFolio(f).find(x=>x.folio===fr);if(!r)return;
   const w=window.open("","_blank");if(!w)return alert("Permite ventanas emergentes.");
@@ -5642,7 +5653,7 @@ function _abrirListaRecibos(folioFiltro){
     const row=document.createElement("div");row.className="rx-list-row";
     const a=document.createElement("div");a.innerHTML='<b>'+_escRec(r.folio)+'</b><span>'+_escRec(r.fecha)+' · '+_escRec(r.cliente)+'</span><small>'+_escRec(r.asunto||"")+'</small>';
     const b=document.createElement("div");b.innerHTML='<strong>'+_fmtRecibo(r.totalCobrado)+'</strong><span class="'+(r.status==="pagado"?"rx-s-ok":"rx-s-warn")+'">'+(r.status==="pagado"?"Pagado":"Promesa de pago")+'</span>';
-    const c=document.createElement("div");c.className="rx-list-actions";const v=document.createElement("button");v.textContent="👁 Ver";v.onclick=()=>_verRecibo(f.folio,r.folio);c.appendChild(v);
+    const c=document.createElement("div");c.className="rx-list-actions";const v=document.createElement("button");v.textContent="↗ Abrir";v.onclick=()=>{if(!_abrirReciboNuevaPestana(f.folio,r.folio))_verRecibo(f.folio,r.folio);};c.appendChild(v);
     if(r.status==="promesa"){const p=document.createElement("button");p.textContent="✓ Marcar pagado";p.onclick=()=>_marcarReciboPagado(f.folio,r.folio);c.appendChild(p);}
     row.append(a,b,c);body.appendChild(row);
   });
@@ -5737,7 +5748,15 @@ async function abrirModalRegistrarPago(idx,opts={}){
       let rec=null;
       if(q("#pgRecibo").checked){rec=_guardarReciboDesdePago(f,items,aplicaciones,{forma:formaPago,montoNeto:recibido,recibe:q("#pgRecibe").value,promesa:!!opts.promesa});rec.tipoPago=modo.value;}
       else{f._m=_mNuevo();_guardarRegistroLocal();}
-      renderFolioList();m.remove();if(rec)_verRecibo(f.folio,rec.folio);_xlToast(opts.promesa?"✅ Promesa de pago guardada.":"✅ Pago registrado. "+_pagoMoneda(totalCobrado));
+      renderFolioList();m.remove();
+      if(rec){
+        const abierta=_abrirReciboNuevaPestana(f.folio,rec.folio);
+        if(!abierta){
+          _verRecibo(f.folio,rec.folio);
+          alert("El recibo fue generado, pero el navegador bloqueó la nueva pestaña. Se abrió dentro del sistema. Permite ventanas emergentes para que se abra automáticamente aparte.");
+        }
+      }
+      _xlToast(opts.promesa?"✅ Promesa de pago guardada y recibo generado.":"✅ Pago registrado y recibo generado. "+_pagoMoneda(totalCobrado));
     }catch(e){q("#pgGuardar").disabled=false;q("#pgGuardar").textContent=opts.promesa?"GENERAR PROMESA / RECIBO":"CONFIRMAR PAGO";alert("No se pudo registrar: "+e.message);}
   };
   if(opts.liquidar){modo.value="liquidacion";}else{modo.value="parcial";}
