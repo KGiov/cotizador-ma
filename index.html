@@ -1462,6 +1462,17 @@ function _confirmarHonorarioImpacto(){
 }
 
 function _resolverHonorarioAperturaAlAgregar(it){
+  // Los conceptos de un solo uso capturados en "Otro concepto" deben respetar
+  // EXACTAMENTE el nombre e importe escritos por el usuario. No se clasifican
+  // ni se convierten en Apertura/Regularización.
+  if(it&&it._oneOff){
+    items.push(it);
+    render();
+    curT=null;
+    document.querySelectorAll(".ti").forEach(e=>e.classList.remove("on"));
+    document.getElementById("dup-warn").style.display="none";
+    return true;
+  }
   const m2=_m2Actual();
   if(!m2){
     alert('Indique los metros cuadrados en "Giro / Superficie" antes de agregar Honorarios por Apertura.');
@@ -2209,7 +2220,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v54 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v55 / API v46", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -2713,7 +2724,7 @@ function doAdd(it){
     abrirCalculadorPIPC(it);
     return;
   }
-  if(it && _esHonorarioAperturaGenericoNombre(it.n)){
+  if(it && !it._oneOff && _esHonorarioAperturaGenericoNombre(it.n)){
     _resolverHonorarioAperturaAlAgregar(it);
     return;
   }
@@ -3846,13 +3857,11 @@ function addCustomItem(){
     nota: nota||"",
     al: area.al,
     ab: area.ab,
-    aKey: area.aKey
+    aKey: area.aKey,
+    _oneOff:true
   };
-  if(_esHonorarioAperturaGenericoNombre(it.n)){
-    clearCustomForm();
-    _resolverHonorarioAperturaAlAgregar(it);
-    return;
-  }
+  // Conceptos de un solo uso: NO aplicar lógica automática de impacto/apertura.
+  // Aunque el texto contenga "honorarios", "apertura", etc., se conserva tal cual.
   items.push(it);
   render();
   clearCustomForm();
