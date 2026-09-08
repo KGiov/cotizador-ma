@@ -754,11 +754,7 @@ function marcarReciboSucio(){
 }
 async function pedirFolioRecibo(){
   const year=new Date().getFullYear();
-  const r=await fetch(SYNC_URL,{
-    method:"POST",
-    headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body:JSON.stringify({action:"nextReceiptFolio",year:year})
-  });
+  const r=await fetch(SYNC_URL+"?action=nextReceiptFolio&year="+encodeURIComponent(year)+"&t="+Date.now());
   const j=await r.json();
   if(!j||!j.ok||!j.folio)throw new Error((j&&j.error)||"No se pudo obtener folio");
   return j.folio;
@@ -1977,14 +1973,32 @@ function snapshotRecibo(){
   };
 }
 async function guardarEntradaRecibo(entry){
-  const r=await fetch(SYNC_URL,{
-    method:"POST",
-    headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body:JSON.stringify({action:"saveReceipt",entry:entry})
-  });
-  const j=await r.json();
-  if(!j||!j.ok)throw new Error((j&&j.error)||"No se pudo guardar el recibo");
-  return j;
+  const body=JSON.stringify({action:"saveReceipt",entry:entry});
+  try{
+    const r=await fetch(SYNC_URL,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:body
+    });
+    const j=await r.json();
+    if(!j||!j.ok)throw new Error((j&&j.error)||"Respuesta inválida al guardar");
+    return j;
+  }catch(err){
+    // Google Apps Script a veces ejecuta el POST pero el navegador bloquea
+    // la respuesta redirigida. Reenviamos en no-cors y verificamos por GET.
+    await fetch(SYNC_URL,{
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:body
+    });
+    await new Promise(res=>setTimeout(res,1200));
+    const vr=await fetch(SYNC_URL+"?action=receiptRegistry&t="+Date.now());
+    const vj=await vr.json();
+    const existe=!!(vj&&vj.ok&&Array.isArray(vj.registry)&&vj.registry.some(x=>String(x.folio||"").trim()===String(entry.folio||"").trim()));
+    if(!existe)throw err;
+    return {ok:true,folio:entry.folio,verified:true};
+  }
 }
 async function guardarReciboEnNube(){
   if(lote.length) return guardarLoteEnNube();
