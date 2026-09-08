@@ -1552,7 +1552,6 @@ function buildRecibo(variante, copia){
         '<div>Manzanillo No. 138, Roma Sur</div>' +
         '<div>Tels: 56380604, 56390142</div>' +
       '</div>' : '') +
-    bloqueDatosPDF(copia) +
   '</div>';
 }
 
@@ -1949,16 +1948,33 @@ async function sincronizarClientesCotizador(){
     dbRenderLista(val("db-buscar"));
   }
 }
+function capturarEstadoFormularioRecibo(){
+  const ids=[
+    "p-nombre","p-asunto","p-forma","p-titulo","r-duplicado","r-membrete-int",
+    "r-nombre","r-domicilio","r-monto","r-monto-letra","r-total","r-concepto",
+    "r-concepto-base","r-inc-importes","r-fecha-completa","r-nota","r-entrega-libre",
+    "r-entrega-cargo","r-recibe","r-recibe-cargo","r-solo-recibe","r-mes",
+    "r-iguala-tipo","r-iguala-otro","establishmentSelect"
+  ];
+  const form={};
+  ids.forEach(id=>{
+    const e=document.getElementById(id); if(!e)return;
+    form[id]=(e.type==="checkbox")?!!e.checked:e.value;
+  });
+  return form;
+}
 function snapshotRecibo(){
-  const activos=incisos.filter(i=>String(i.texto||"").trim()).map(i=>({
-    texto:i.texto||"", importe:parseFloat(i.importe)||0, tipo:i.tipo||"ninguno"
+  const activos=incisos.filter(i=>String(i.texto||"").trim()).map((i,n)=>({
+    item:n+1,texto:i.texto||"", importe:parseFloat(i.importe)||0, tipo:i.tipo||"ninguno"
   }));
   return {
+    schema:"MA_RECIBO_V2",
     folio:currentFolio,
     fecha:(val("r-fecha-completa")||"").toUpperCase(),
-    fechaISO:new Date().toISOString(),
+    fechaISO:maFechaISORecibo(),
     modo:modo,
     cliente: modo==="externo" ? val("r-nombre") : val("p-nombre"),
+    razonSocial: modo==="externo" ? val("r-nombre") : val("p-nombre"),
     domicilio: modo==="externo" ? val("r-domicilio") : "",
     monto:parseFloat(val("r-monto"))||0,
     concepto: activos.map(x=>x.texto).join(" | ") || val("r-concepto") || val("p-asunto"),
@@ -1969,7 +1985,9 @@ function snapshotRecibo(){
     firmante:nombreEntrega(),
     contraparte:val("r-recibe"),
     nota:val("r-nota"),
-    mes:mesSel()
+    mes:mesSel(),
+    form:capturarEstadoFormularioRecibo(),
+    incisos:incisos.map(i=>({texto:i.texto||"",importe:i.importe||"",auto:!!i.auto,tipo:i.tipo||"ninguno"}))
   };
 }
 async function guardarEntradaRecibo(entry){
@@ -2064,6 +2082,90 @@ function abrirRegistroRecibos(){
   cargarRegistroRecibos();
 }
 function cerrarRegistroRecibos(){document.getElementById("rec-reg-ov").classList.remove("on");}
+function archivoMARecibo(entry){
+  const e=entry||{};
+  const items=Array.isArray(e.conceptos)?e.conceptos:[];
+  const clean=v=>String(v==null?"":v).replace(/\r?\n/g," ").replace(/\[\[|\]\]/g,"").trim();
+  const l=[
+    "[[MA_RECIBO_V2]]",
+    "FOLIO="+clean(e.folio),
+    "FECHA_ISO="+clean(e.fechaISO||""),
+    "FECHA_TEXTO="+clean(e.fecha||""),
+    "MODO="+clean(String(e.modo||"").toUpperCase()),
+    "METODO="+clean(String(e.metodo||"EFECTIVO").toUpperCase()),
+    "CLIENTE="+clean(e.cliente||""),
+    "RAZON_SOCIAL="+clean(e.razonSocial||e.cliente||""),
+    "ITEMS="+items.length
+  ];
+  items.forEach((it,i)=>{
+    l.push("ITEM_"+(i+1)+"_CONCEPTO="+clean(it.texto||""));
+    l.push("ITEM_"+(i+1)+"_MONTO="+String(parseFloat(it.importe)||0));
+  });
+  l.push("[[FIN_MA_RECIBO]]");
+  return l.join("\r\n");
+}
+function descargarTexto(nombre,contenido){
+  const blob=new Blob([contenido],{type:"text/plain;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+}
+function registroPorFolio(folio){return registroRecibos.find(x=>String(x.folio||"")===String(folio||""));}
+function descargarArchivoRecibo(folio){
+  const x=registroPorFolio(folio); if(!x)return alert("No encontré ese folio.");
+  descargarTexto((x.folio||"RECIBO")+"_MA.txt",archivoMARecibo(x.snapshot||x));
+}
+function aplicarSnapshotRecibo(entry,nuevoFolio){
+  const e=entry&&entry.snapshot?entry.snapshot:entry; if(!e)return false;
+  selModo(e.modo||"externo");
+  tipoRecibo=e.tipoRecibo||"ninguno";
+  if(Array.isArray(e.incisos)&&e.incisos.length) incisos=e.incisos.map(i=>({texto:i.texto||"",importe:i.importe==null?"":i.importe,auto:!!i.auto,tipo:i.tipo||"ninguno"}));
+  else if(Array.isArray(e.conceptos)&&e.conceptos.length) incisos=e.conceptos.map(i=>({texto:i.texto||"",importe:i.importe==null?"":i.importe,auto:false,tipo:i.tipo||"ninguno"}));
+  const form=e.form||{};
+  Object.keys(form).forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    if(el.type==="checkbox")el.checked=!!form[id]; else el.value=form[id]==null?"":form[id];
+  });
+  // Compatibilidad con recibos guardados antes de V16.
+  if(!e.form){
+    if(document.getElementById("r-nombre")&&e.modo!=="interno")document.getElementById("r-nombre").value=e.cliente||"";
+    if(document.getElementById("p-nombre")&&e.modo==="interno")document.getElementById("p-nombre").value=e.cliente||"";
+    if(document.getElementById("r-domicilio"))document.getElementById("r-domicilio").value=e.domicilio||"";
+    if(document.getElementById("r-fecha-completa"))document.getElementById("r-fecha-completa").value=e.fecha||"";
+    if(document.getElementById("r-monto"))document.getElementById("r-monto").value=e.monto||0;
+    if(document.getElementById("r-nota"))document.getElementById("r-nota").value=e.nota||"";
+  }
+  currentFolio=nuevoFolio?"REC-PENDIENTE":(e.folio||"REC-PENDIENTE");
+  reciboGuardado=!nuevoFolio;
+  document.getElementById("folio").textContent=currentFolio;
+  actualizarBotonesTipos(); renderIncisosUI(); render();
+  setRecSync(nuevoFolio?"☁️ plantilla · sin guardar":"☁️ recibo cargado");
+  return true;
+}
+function verReciboGuardado(folio){
+  const x=registroPorFolio(folio); if(!x)return;
+  const e=x.snapshot||x, items=Array.isArray(e.conceptos)?e.conceptos:[];
+  const html='<div style="font:14px/1.5 Arial,sans-serif;max-width:720px;margin:30px auto;padding:26px;border:1px solid #ddd;border-radius:12px">'+
+    '<h2 style="margin-top:0">'+esc(e.folio||folio)+'</h2><p><b>Fecha:</b> '+esc(e.fecha||'')+'</p><p><b>Cliente:</b> '+esc(e.cliente||'')+'</p><p><b>Modo:</b> '+esc(e.modo||'')+' · <b>Método:</b> '+esc(e.metodo||'EFECTIVO')+'</p><hr>'+
+    items.map((it,i)=>'<p><b>'+(i+1)+'.</b> '+esc(it.texto||'')+' — $'+money(it.importe||0)+'</p>').join('')+
+    '<hr><p style="text-align:right"><b>Total: $'+money(e.monto||items.reduce((s,it)=>s+(Number(it.importe)||0),0))+'</b></p></div>';
+  const w=window.open("","_blank"); if(!w)return alert("Permite ventanas emergentes para ver el recibo.");
+  w.document.write('<!doctype html><html><head><title>'+esc(e.folio||folio)+'</title></head><body>'+html+'</body></html>'); w.document.close();
+}
+function editarReciboGuardado(folio){
+  const x=registroPorFolio(folio); if(!x)return;
+  aplicarSnapshotRecibo(x,false); cerrarRegistroRecibos();
+}
+function usarComoPlantilla(folio){
+  const x=registroPorFolio(folio); if(!x)return;
+  aplicarSnapshotRecibo(x,true); cerrarRegistroRecibos();
+}
+function descargarPDFRecibo(folio){
+  const x=registroPorFolio(folio); if(!x)return;
+  aplicarSnapshotRecibo(x,false); cerrarRegistroRecibos();
+  setTimeout(()=>window.print(),250);
+}
 function renderRegistroRecibos(){
   const el=document.getElementById("rec-reg-lista"); if(!el)return;
   const q=(val("rec-reg-buscar")||"").toLowerCase();
@@ -2071,9 +2173,15 @@ function renderRegistroRecibos(){
     .sort((a,b)=>String(b.folio||"").localeCompare(String(a.folio||""),"es",{numeric:true}));
   document.getElementById("rec-reg-count").textContent=arr.length+" recibo(s)";
   if(!arr.length){el.innerHTML='<div class="cat-vacio">Sin recibos guardados.</div>';return;}
-  el.innerHTML='<table class="rec-reg-table"><thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Concepto</th><th style="text-align:right">Monto</th><th>Formato</th></tr></thead><tbody>'+
-    arr.map(x=>'<tr><td><b>'+esc(x.folio||"")+'</b></td><td>'+esc(x.fecha||"")+'</td><td>'+esc(x.cliente||"")+'</td><td>'+esc(x.concepto||"")+'</td><td class="rec-reg-money">$'+money(x.monto||0)+'</td><td>'+(x.sinMembrete?'Sin logo · doble':'Con membrete')+'</td></tr>').join("")+
-    '</tbody></table>';
+  el.innerHTML='<table class="rec-reg-table"><thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Concepto</th><th style="text-align:right">Monto</th><th>Acciones</th></tr></thead><tbody>'+arr.map(x=>{
+    const f=String(x.folio||"").replace(/'/g,"\'");
+    return '<tr><td><b>'+esc(x.folio||"")+'</b><div style="font-size:10px;opacity:.65">'+(x.sinMembrete?'Sin logo · doble':'Con membrete')+'</div></td><td>'+esc(x.fecha||"")+'</td><td>'+esc(x.cliente||"")+'</td><td>'+esc(x.concepto||"")+'</td><td class="rec-reg-money">$'+money(x.monto||0)+'</td><td><div style="display:flex;gap:5px;flex-wrap:wrap;min-width:290px">'+
+      '<button class="btn-mini" onclick="descargarPDFRecibo(\''+f+'\')">PDF</button>'+ 
+      '<button class="btn-mini" onclick="descargarArchivoRecibo(\''+f+'\')">Archivo</button>'+ 
+      '<button class="btn-mini" onclick="verReciboGuardado(\''+f+'\')">Ver</button>'+ 
+      '<button class="btn-mini" onclick="editarReciboGuardado(\''+f+'\')">Editar</button>'+ 
+      '<button class="btn-mini" onclick="usarComoPlantilla(\''+f+'\')">Plantilla</button></div></td></tr>';
+  }).join("")+'</tbody></table>';
 }
 
 
@@ -2251,7 +2359,7 @@ function buscarConceptoDB(texto){
     <div class="cat-h">
       <div>
         <h2>Registro de recibos</h2>
-        <p>Folios guardados en Google Sheets. La fuente oficial es la hoja RECIBOS.</p>
+        <p>Consulta, descarga, edita o reutiliza recibos guardados en Google Sheets.</p>
       </div>
       <button class="cat-x" onclick="cerrarRegistroRecibos()" aria-label="Cerrar">✕</button>
     </div>
