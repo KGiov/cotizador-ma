@@ -1462,17 +1462,6 @@ function _confirmarHonorarioImpacto(){
 }
 
 function _resolverHonorarioAperturaAlAgregar(it){
-  // Los conceptos de un solo uso capturados en "Otro concepto" deben respetar
-  // EXACTAMENTE el nombre e importe escritos por el usuario. No se clasifican
-  // ni se convierten en Apertura/Regularización.
-  if(it&&it._oneOff){
-    items.push(it);
-    render();
-    curT=null;
-    document.querySelectorAll(".ti").forEach(e=>e.classList.remove("on"));
-    document.getElementById("dup-warn").style.display="none";
-    return true;
-  }
   const m2=_m2Actual();
   if(!m2){
     alert('Indique los metros cuadrados en "Giro / Superficie" antes de agregar Honorarios por Apertura.');
@@ -1973,7 +1962,7 @@ ambiental:{l:"Ambiental",b:"ba",items:[
 //  2) Pega aquí la URL que termina en /exec :
 // ══════════════════════════════════════════════════════════════
 const SYNC_URL = "https://script.google.com/macros/s/AKfycbwKQSU59-MzsHhmODU-xtqIvI7l_u4BSWqF3pPbB-Mxupm81fCgdN7tmvQvemqAY3Z85w/exec"; // URL del Web App del despacho
-const SYNC_INTERVALO_MS = 20000; // consulta cambios cada 20 s
+const SYNC_INTERVALO_MS = 45000; // consulta cambios cada 45 s; reduce tráfico innecesario
 
 const SYNC_KEYS = ["ma_custom_items","MA_clientes_extra","ma_servicios_extra","ma_overrides_base"];
 const _lsSet = localStorage.setItem.bind(localStorage);
@@ -2220,7 +2209,7 @@ let _ultimoErrorPush = "";
 async function ejecutarDiagnostico(){
   if(!SYNC_URL){ alert("Este archivo no tiene URL de sincronización: funciona solo en este dispositivo."); return; }
   _setPill("sync","⟳ Diagnosticando…");
-  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v55 / API v46", ""];
+  const rep = ["DIAGNÓSTICO DE SINCRONIZACIÓN", "Versión: v54.1 ESTABLE / API v50.1", ""];
   // 1) ¿Puedo LEER de la nube?
   let lecturaOk = false;
   try{
@@ -2398,27 +2387,30 @@ async function _asegurarFolioGuardado(){
   if(currentFolio) return currentFolio;
   if(_folioAsignacionPromise) return _folioAsignacionPromise;
 
-  // Usar la MISMA URL de nube configurada por el sistema. Antes esta rutina
-  // usaba únicamente la constante fija, lo que podía provocar "Failed to fetch"
-  // si la URL configurada/correcta era distinta.
   const url=(typeof _syncURL==="function" ? _syncURL() : SYNC_URL) || SYNC_URL;
   if(!url) throw new Error("Se necesita conexión para asignar un folio");
 
   _folioAsignacionPromise=(async()=>{
     const year=new Date().getFullYear();
+    // El mismo requestId se reutiliza en todos los reintentos. El Apps Script
+    // devuelve el mismo folio aunque el primer intento sí haya llegado pero la
+    // respuesta haya tardado.
+    const requestId="cot_"+year+"_"+Date.now()+"_"+Math.random().toString(36).slice(2,10);
     let ultimoError=null;
 
-    // Reintento corto: Apps Script a veces tarda en responder al primer intento.
-    for(let intento=1; intento<=3; intento++){
+    for(let intento=1; intento<=2; intento++){
+      let timer=null;
       try{
-        _setPill("sync","⟳ Asignando folio… intento "+intento+"/3");
+        _setPill("sync","⟳ Asignando folio…");
         const ctrl=new AbortController();
-        const timer=setTimeout(()=>ctrl.abort(),12000);
+        timer=setTimeout(()=>ctrl.abort(),20000);
+
         const r=await fetch(url,{
           method:"POST",
           headers:{"Content-Type":"text/plain;charset=utf-8"},
-          body:JSON.stringify({action:"nextFolio",year:year}),
-          signal:ctrl.signal
+          body:JSON.stringify({action:"nextFolio",year:year,requestId:requestId}),
+          signal:ctrl.signal,
+          cache:"no-store"
         });
         clearTimeout(timer);
 
@@ -2426,6 +2418,10 @@ async function _asegurarFolioGuardado(){
         const txt=await r.text();
         let j=null;
         try{j=JSON.parse(txt);}catch(e){throw new Error("Respuesta inválida del servidor");}
+
+        // Si el servidor está atendiendo otra operación corta, reintenta sin
+        // bombardear al usuario con alertas.
+        if(j && j.busy) throw new Error(j.error || "Servidor ocupado");
         if(!j||!j.ok||!j.folio) throw new Error((j&&j.error)||"No se pudo asignar folio");
 
         if(!currentFolio) currentFolio=j.folio;
@@ -2440,22 +2436,19 @@ async function _asegurarFolioGuardado(){
         _actualizarPill();
         return currentFolio;
       }catch(e){
+        if(timer) clearTimeout(timer);
         ultimoError=e;
-        await new Promise(r=>setTimeout(r,700*intento));
+        if(intento<2) await new Promise(r=>setTimeout(r,1200));
       }
     }
 
     _ultimoOk=false;
     _actualizarPill();
     const msg=(ultimoError&&ultimoError.name==="AbortError")
-      ? "La conexión con Google Sheets tardó demasiado."
-      : ((ultimoError&&ultimoError.message)||"Failed to fetch");
+      ? "Google Sheets tardó más de lo normal."
+      : ((ultimoError&&ultimoError.message)||"No hubo respuesta");
 
-    throw new Error(
-      "No pude asignar el folio porque no respondió la nube. "+
-      "La cotización NO se perdió: sigue abierta en pantalla. "+
-      "Revisa el indicador de conexión y vuelve a presionar Guardar. Detalle: "+msg
-    );
+    throw new Error("No pude asignar el folio. "+msg+" La cotización sigue abierta y no se perdió.");
   })();
 
   try{return await _folioAsignacionPromise;}
@@ -2724,7 +2717,7 @@ function doAdd(it){
     abrirCalculadorPIPC(it);
     return;
   }
-  if(it && !it._oneOff && _esHonorarioAperturaGenericoNombre(it.n)){
+  if(it && _esHonorarioAperturaGenericoNombre(it.n)){
     _resolverHonorarioAperturaAlAgregar(it);
     return;
   }
@@ -3617,10 +3610,7 @@ async function guardarPDFEnFolio(){
     await guardarFolioEnRegistry();
   }catch(e){
     const msg=(e&&e.message)||String(e);
-    _xlToast("⚠️ No se guardó: "+msg,"#c0392b");
-    if(/fetch|conexi|nube|folio/i.test(msg)){
-      setTimeout(()=>alert("No se pudo guardar en este momento porque falló la conexión con la nube.\n\nLa cotización sigue abierta y no se borró. Vuelve a intentar Guardar cuando el indicador de conexión esté activo.\n\nDetalle: "+msg),120);
-    }
+    _xlToast("⚠️ No se guardó todavía: "+msg+" Puedes volver a intentar Guardar.","#c0392b");
     return;
   }
   const idx=folioRegistry.findIndex(f=>f.folio===currentFolio);
@@ -3857,11 +3847,13 @@ function addCustomItem(){
     nota: nota||"",
     al: area.al,
     ab: area.ab,
-    aKey: area.aKey,
-    _oneOff:true
+    aKey: area.aKey
   };
-  // Conceptos de un solo uso: NO aplicar lógica automática de impacto/apertura.
-  // Aunque el texto contenga "honorarios", "apertura", etc., se conserva tal cual.
+  if(_esHonorarioAperturaGenericoNombre(it.n)){
+    clearCustomForm();
+    _resolverHonorarioAperturaAlAgregar(it);
+    return;
+  }
   items.push(it);
   render();
   clearCustomForm();
