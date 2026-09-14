@@ -6116,13 +6116,40 @@ function confirmarAutorizacion(idx){
   }
 }
 
-function _nombreOrden(f){
-  const items=(f.snapshot&&f.snapshot.items)||[];
-  const areas=[...new Set(items.filter(it=>it._aut!==false).map(it=>it.al).filter(Boolean))];
-  const areasTxt=areas.length?" - "+areas.join(" y "):"";
-  return (f.cliente||f.folio)+areasTxt+".pdf";
+// ── ORDEN DE SERVICIO: selección TEMPORAL de conceptos ─────────────
+let _osTemporal=null; // {idx:Number, seleccionados:Set<number>}
+
+function _osItemsAutorizados(f){
+  const items=(f&&f.snapshot&&Array.isArray(f.snapshot.items))?f.snapshot.items:[];
+  return items.map((it,i)=>({it,i})).filter(x=>x.it&&x.it._aut!==false);
 }
-function _ordenServicioHTML(f){
+function _osItemsVisibles(f,idx){
+  const aut=_osItemsAutorizados(f);
+  if(!_osTemporal||_osTemporal.idx!==idx||!(_osTemporal.seleccionados instanceof Set)) return aut;
+  return aut.filter(x=>_osTemporal.seleccionados.has(x.i));
+}
+function _osCerrar(){
+  const ov=document.getElementById("os-overlay");
+  if(ov)ov.remove();
+  _osTemporal=null;
+}
+function _osNombreSeguro(txt){
+  let s=String(txt||"");
+  try{ if(typeof _fixTextoUTF8==="function") s=_fixTextoUTF8(s); }catch(e){}
+  try{s=s.normalize("NFC");}catch(e){}
+  s=s.replace(/[\\\/:*?"<>|\u0000-\u001F]/g," ")
+     .replace(/\s+/g," ")
+     .replace(/[. ]+$/g,"")
+     .trim();
+  return s||"ORDEN DE SERVICIO";
+}
+function _nombreOrden(f,idx){
+  const visibles=_osItemsVisibles(f,idx);
+  const areas=[...new Set(visibles.map(x=>x.it.al).filter(Boolean))];
+  const areasTxt=areas.length?" - "+areas.join(" y "):"";
+  return _osNombreSeguro((f.cliente||f.folio)+areasTxt)+".pdf";
+}
+function _ordenServicioHTML(f,idx){
   const s=f.snapshot,o=f._orden;
   const logoEl=document.querySelector(".hdr-l img");
   const logoSrc=logoEl?logoEl.src:"";
@@ -6130,7 +6157,8 @@ function _ordenServicioHTML(f){
   const ubiHtml=String(o.ubicacion||"").trim()
     ?'<a href="'+mapsUrl+'" target="_blank" style="color:#2563a8;text-decoration:underline;">'+_escHtml(o.ubicacion)+' 📍</a>'
     :"Por definir";
-  const filas=s.items.filter(it=>it._aut!==false).map(it=>{
+  const visibles=_osItemsVisibles(f,idx);
+  const filas=visibles.map(x=>{ const it=x.it;
     return '<tr>'+
       '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#b07d2e;white-space:nowrap;">'+_escHtml(it.al||"")+'</td>'+
       '<td style="padding:7px 10px;border-bottom:1px solid #e8e8e8;font-size:11px;color:#1a1f2e;">'+_escHtml(it.n)+(it.s?'<br><span style="font-size:9px;color:#8890a4;">'+_escHtml(it.s)+'</span>':"")+'</td>'+
@@ -6162,8 +6190,83 @@ function _ordenServicioHTML(f){
       '<th style="padding:8px 10px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#fff;text-align:left;">Área</th>'+
       '<th style="padding:8px 10px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#fff;text-align:left;">Gestión / Concepto</th>'+
       '</tr></thead><tbody>'+filas+'</tbody></table>'+
-    '<div style="margin-top:22px;font-size:9px;color:#8890a4;text-align:center;">Esta orden contiene únicamente los conceptos autorizados.</div>'+
+    '<div style="margin-top:22px;font-size:9px;color:#8890a4;text-align:center;">'+
+      (visibles.length<_osItemsAutorizados(f).length
+        ?'Vista temporal: esta orden muestra '+visibles.length+' de '+_osItemsAutorizados(f).length+' conceptos autorizados. La selección no se guarda.'
+        :'Esta orden contiene únicamente los conceptos autorizados.')+
+    '</div>'+
   '</div>';
+}
+
+function _osActualizarBoton(idx){
+  const b=document.getElementById("os-btn-conceptos");
+  if(!b)return;
+  const f=folioRegistry[idx];
+  const total=_osItemsAutorizados(f).length;
+  const sel=_osItemsVisibles(f,idx).length;
+  b.textContent="☑ Conceptos "+sel+"/"+total;
+}
+function _osRefrescarOrden(idx){
+  const f=folioRegistry[idx];
+  const paper=document.getElementById("os-paper");
+  if(f&&paper)paper.innerHTML=_ordenServicioHTML(f,idx);
+  _osActualizarBoton(idx);
+}
+function abrirSelectorConceptosOrden(idx){
+  const f=folioRegistry[idx];
+  if(!f)return;
+  const aut=_osItemsAutorizados(f);
+  if(!aut.length){_xlToast("⚠️ No hay conceptos autorizados para mostrar.","#c0392b");return;}
+
+  if(!_osTemporal||_osTemporal.idx!==idx){
+    _osTemporal={idx:idx,seleccionados:new Set(aut.map(x=>x.i))};
+  }
+
+  let m=document.getElementById("os-conceptos-modal");
+  if(m)m.remove();
+  m=document.createElement("div");
+  m.id="os-conceptos-modal";
+  m.style.cssText="position:fixed;inset:0;background:rgba(15,18,28,.58);z-index:100005;display:flex;align-items:center;justify-content:center;padding:16px;";
+  const filas=aut.map((x,n)=>{
+    const checked=_osTemporal.seleccionados.has(x.i)?" checked":"";
+    return '<label style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid #eef0f4;cursor:pointer;">'+
+      '<input type="checkbox" data-os-idx="'+x.i+'"'+checked+' style="width:17px;height:17px;margin-top:2px;accent-color:#b07d2e;">'+
+      '<span style="min-width:0;"><b style="display:block;font-size:12px;color:#1a1f2e;">'+_escHtml(x.it.n||("Concepto "+(n+1)))+'</b>'+
+      '<span style="font-size:10px;color:#8890a4;">'+_escHtml(x.it.al||"")+(x.it.s?" · "+_escHtml(x.it.s):"")+'</span></span>'+
+    '</label>';
+  }).join("");
+
+  m.innerHTML='<div style="width:min(560px,96vw);max-height:86vh;background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;overflow:hidden;">'+
+    '<div style="padding:15px 18px;background:#1a1f2e;color:#fff;">'+
+      '<div style="font-family:Cormorant Garamond,serif;font-size:18px;font-weight:700;">Conceptos visibles en esta orden</div>'+
+      '<div style="font-size:10px;color:#cbd5e1;margin-top:2px;">Selección temporal: no cambia la cotización, autorización ni registro.</div>'+
+    '</div>'+
+    '<div style="padding:8px 12px;background:#f8f9fb;border-bottom:1px solid #e2e5ec;display:flex;gap:7px;">'+
+      '<button id="os-sel-todos" style="border:1px solid #cdd2dc;background:#fff;border-radius:6px;padding:6px 10px;font-size:10px;font-weight:700;cursor:pointer;">Todos</button>'+
+      '<button id="os-sel-ninguno" style="border:1px solid #cdd2dc;background:#fff;border-radius:6px;padding:6px 10px;font-size:10px;font-weight:700;cursor:pointer;">Ninguno</button>'+
+    '</div>'+
+    '<div id="os-sel-lista" style="overflow:auto;flex:1;">'+filas+'</div>'+
+    '<div style="padding:12px 14px;border-top:1px solid #e2e5ec;display:flex;gap:8px;justify-content:flex-end;">'+
+      '<button id="os-sel-cancelar" style="border:none;background:#f0f1f4;color:#4a5066;border-radius:7px;padding:9px 14px;font-size:11px;font-weight:700;cursor:pointer;">Cancelar</button>'+
+      '<button id="os-sel-aplicar" style="border:none;background:#b07d2e;color:#fff;border-radius:7px;padding:9px 16px;font-size:11px;font-weight:700;cursor:pointer;">Aplicar solo a esta orden</button>'+
+    '</div>'+
+  '</div>';
+  document.body.appendChild(m);
+
+  const estadoInicial=new Set(_osTemporal.seleccionados);
+  const checks=()=>Array.from(m.querySelectorAll('input[data-os-idx]'));
+  document.getElementById("os-sel-todos").onclick=()=>checks().forEach(c=>c.checked=true);
+  document.getElementById("os-sel-ninguno").onclick=()=>checks().forEach(c=>c.checked=false);
+  document.getElementById("os-sel-cancelar").onclick=()=>{_osTemporal.seleccionados=estadoInicial;m.remove();};
+  m.addEventListener("click",e=>{if(e.target===m){_osTemporal.seleccionados=estadoInicial;m.remove();}});
+  document.getElementById("os-sel-aplicar").onclick=()=>{
+    const elegidos=checks().filter(c=>c.checked).map(c=>Number(c.dataset.osIdx));
+    if(!elegidos.length){alert("Selecciona al menos un concepto para la orden.");return;}
+    _osTemporal.seleccionados=new Set(elegidos);
+    m.remove();
+    _osRefrescarOrden(idx);
+    _xlToast("✅ Vista temporal actualizada: "+elegidos.length+" concepto(s)");
+  };
 }
 
 // Visualizador de la Orden de Servicio: se VE en pantalla y desde ahí se
@@ -6186,6 +6289,8 @@ function verOrdenServicio(idx){
     f._m=_mNuevo();
     _guardarRegistroLocal();
   }
+  _osTemporal={idx:idx,seleccionados:new Set(_osItemsAutorizados(f).map(x=>x.i))};
+
   let ov=document.getElementById("os-overlay");
   if(ov)ov.remove();
   ov=document.createElement("div");
@@ -6193,20 +6298,22 @@ function verOrdenServicio(idx){
   ov.style.cssText="position:fixed;inset:0;background:rgba(15,18,28,.6);z-index:99997;display:flex;flex-direction:column;align-items:center;padding:16px;overflow-y:auto;";
   ov.innerHTML=
     '<div style="width:100%;max-width:820px;display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px;flex-wrap:wrap;">'+
+      '<button id="os-btn-conceptos" onclick="abrirSelectorConceptosOrden('+idx+')" style="background:#fdf6ec;border:1px solid #e8d5b0;color:#8a6520;border-radius:7px;padding:10px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">☑ Conceptos</button>'+
       '<button id="os-btn-pdf" onclick="descargarOrdenPDF('+idx+')" style="background:linear-gradient(135deg,#2d7a4f,#3d9a66);border:none;color:#fff;border-radius:7px;padding:10px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">⬇ Descargar PDF</button>'+
       '<button id="os-btn-wa" onclick="compartirOrdenWhatsApp('+idx+')" style="background:#25d366;border:none;color:#fff;border-radius:7px;padding:10px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">📲 WhatsApp</button>'+
       '<button onclick="imprimirOrden('+idx+')" style="background:#eff5fd;border:1px solid #c8dcf5;color:#2563a8;border-radius:7px;padding:10px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">🖨 Imprimir</button>'+
-      '<button onclick="document.getElementById(\'os-overlay\').remove()" style="background:#f0f1f4;border:none;color:#4a5066;border-radius:7px;padding:10px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">✕ Cerrar</button>'+
+      '<button onclick="_osCerrar()" style="background:#f0f1f4;border:none;color:#4a5066;border-radius:7px;padding:10px 18px;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">✕ Cerrar</button>'+
     '</div>'+
     '<div id="os-paper" style="width:100%;max-width:820px;background:#fff;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-family:Inter,Arial,sans-serif;">'+
       '<div id="os-loading" style="padding:80px 20px;text-align:center;color:#8890a4;font-size:13px;">⏳ Generando la Orden de Servicio…<br><span style="font-size:11px;">puede tardar unos segundos</span></div>'+
     '</div>';
   document.body.appendChild(ov);
-  ov.addEventListener("click",e=>{if(e.target===ov)ov.remove();});
+  ov.addEventListener("click",e=>{if(e.target===ov)_osCerrar();});
   // Construir el contenido en el siguiente frame (deja respirar al navegador)
   setTimeout(()=>{
     const paper=document.getElementById("os-paper");
-    if(paper)paper.innerHTML=_ordenServicioHTML(f);
+    if(paper)paper.innerHTML=_ordenServicioHTML(f,idx);
+    _osActualizarBoton(idx);
   },60);
 }
 
@@ -6218,7 +6325,7 @@ function descargarOrdenPDF(idx){
   if(typeof html2pdf==="undefined"){_xlToast("⚠️ Sin conexión al generador de PDF. Usa 🖨 Imprimir y elige Guardar como PDF.","#d97706");return;}
   const btn=document.getElementById("os-btn-pdf");
   if(btn){btn.disabled=true;btn.textContent="⏳ Generando… (puede tardar)";}
-  const nombrePDF=_nombreOrden(f);
+  const nombrePDF=_nombreOrden(f,idx);
   _xlToast("⏳ Generando "+nombrePDF+"… no cierres la ventana","#2563a8");
   html2pdf().set({
     margin:[8,8,8,8],
@@ -6239,10 +6346,12 @@ function descargarOrdenPDF(idx){
 function imprimirOrden(idx){
   _normalizarDOMUTF8(document.body);
   const f=folioRegistry[idx];
-  if(!f||!f._orden)return;
+  const paper=document.getElementById("os-paper");
+  if(!f||!f._orden||!paper)return;
   const w=window.open("","_blank");
   if(!w){alert("Tu navegador bloqueó la ventana. Permite ventanas emergentes para este sitio.");return;}
-  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Orden de Servicio - '+_escHtml(f.cliente||f.folio)+'</title></head><body style="margin:0;font-family:Arial,sans-serif;">'+_ordenServicioHTML(f)+'</body></html>');
+  const titulo=_osNombreSeguro("Orden de Servicio - "+(f.cliente||f.folio));
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+_escHtml(titulo)+'</title></head><body style="margin:0;font-family:Arial,sans-serif;">'+paper.innerHTML+'</body></html>');
   w.document.close();
   setTimeout(()=>{w.focus();w.print();},400);
 }
@@ -6255,7 +6364,7 @@ function compartirOrdenWhatsApp(idx){
   const paper=document.getElementById("os-paper");
   if(!f||!paper)return;
   if(typeof html2pdf==="undefined"){_xlToast("⚠️ Sin conexión al generador de PDF.","#c0392b");return;}
-  const nombrePDF=_nombreOrden(f);
+  const nombrePDF=_nombreOrden(f,idx);
   const btn=document.getElementById("os-btn-wa");
   if(btn){btn.disabled=true;btn.textContent="⏳ Preparando…";}
   const restaurar=()=>{if(btn){btn.disabled=false;btn.textContent="📲 WhatsApp";}};
