@@ -6842,7 +6842,7 @@ function _crearDashboardCotizaciones(){
  const ov=document.createElement("div");ov.id="cotDashModal";
  ov.onclick=function(e){if(e.target===ov)_cerrarDashboardCotizaciones();};
  ov.innerHTML=`<div id="cotDashCard">
- <div class="cdash-head"><div><div class="cdash-title">Análisis de cotizaciones</div><div class="cdash-sub">Tesorería, Terceros, Honorarios y pendientes de autorización</div></div><button type="button" class="cdash-close" onclick="_cerrarDashboardCotizaciones()">Cerrar</button></div>
+ <div class="cdash-head"><div><div class="cdash-title">Análisis de cotizaciones</div><div class="cdash-sub">Tesorería, Terceros, Honorarios y pendientes de autorización</div></div><div class="cdash-head-actions"><button type="button" class="cdash-export" onclick="_exportarDashboardCotizacionesXLSX()">📊 Exportar XLSX</button><button type="button" class="cdash-close" onclick="_cerrarDashboardCotizaciones()">Cerrar</button></div></div>
  <div class="cdash-body">
  <div class="cdash-filters">
  <label>DESDE<input type="date" id="cdashDesde" onchange="_renderDashboardCotizaciones()"></label>
@@ -6858,6 +6858,31 @@ function _crearDashboardCotizaciones(){
 }
 function _abrirDashboardCotizaciones(){_crearDashboardCotizaciones();_renderDashboardCotizaciones();}
 function _cerrarDashboardCotizaciones(){const m=document.getElementById("cotDashModal");if(m)m.remove();}
+function _exportarDashboardCotizacionesXLSX(){
+ if(typeof XLSX==="undefined"){alert("No está disponible el generador de Excel. Revisa tu conexión e intenta nuevamente.");return;}
+ const body=document.getElementById("cdashBody");
+ if(!body){alert("Abre primero el análisis de cotizaciones.");return;}
+ const trs=[...body.querySelectorAll("tr")];
+ if(!trs.length){alert("No hay cotizaciones visibles con los filtros actuales.");return;}
+ const num=t=>{const n=Number(String(t||"").replace(/[^0-9.-]/g,""));return Number.isFinite(n)?n:0;};
+ const data=[["Fecha","Folio","Cliente","Asunto","Estatus","Tesorería","Terceros","Honorarios","Total"]];
+ let sd=0,st=0,sh=0,sg=0;
+ trs.forEach(tr=>{
+   const td=[...tr.cells]; if(td.length<9)return;
+   const d=num(td[5].textContent),t=num(td[6].textContent),h=num(td[7].textContent),g=num(td[8].textContent);
+   sd+=d;st+=t;sh+=h;sg+=g;
+   data.push([td[0].textContent.trim(),td[1].textContent.trim(),td[2].textContent.trim(),td[3].textContent.trim(),td[4].textContent.trim(),d,t,h,g]);
+ });
+ data.push(["","","","","TOTAL",sd,st,sh,sg]);
+ const ws=XLSX.utils.aoa_to_sheet(data);
+ ws["!cols"]=[{wch:13},{wch:17},{wch:32},{wch:42},{wch:14},{wch:16},{wch:16},{wch:16},{wch:16}];
+ ws["!autofilter"]={ref:"A1:I"+(data.length-1)};
+ for(let r=2;r<=data.length;r++) for(let c=5;c<=8;c++){const a=XLSX.utils.encode_cell({r:r-1,c});if(ws[a])ws[a].z='"$"#,##0.00';}
+ const wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,ws,"Análisis cotizaciones");
+ const hoy=new Date(),yyyy=hoy.getFullYear(),mm=String(hoy.getMonth()+1).padStart(2,"0"),dd=String(hoy.getDate()).padStart(2,"0");
+ XLSX.writeFile(wb,"Analisis_Cotizaciones_MA_"+yyyy+"-"+mm+"-"+dd+".xlsx");
+}
 function _renderDashboardCotizaciones(){
  const desde=document.getElementById("cdashDesde")?.value||"",hasta=document.getElementById("cdashHasta")?.value||"",cliente=(document.getElementById("cdashCliente")?.value||"").trim().toLowerCase(),est=document.getElementById("cdashEstatus")?.value||"todos",ord=document.getElementById("cdashOrden")?.value||"fecha_desc";
  const d0=desde?new Date(desde+"T00:00:00"):null,d1=hasta?new Date(hasta+"T23:59:59"):null;
@@ -6999,7 +7024,7 @@ function _renderDashboardCotizaciones(){
 }
 #cotDashModal{position:fixed;inset:0;z-index:120000;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:18px}
 #cotDashCard{width:min(1180px,96vw);max-height:92vh;overflow:auto;background:#f7f7f5;border-radius:14px;box-shadow:0 30px 90px rgba(0,0,0,.45);border:1px solid #d6d6d0}
-.cdash-head{position:sticky;top:0;z-index:2;background:#111827;color:#fff;padding:16px 18px;display:flex;justify-content:space-between;gap:12px;align-items:center}.cdash-title{font-size:18px;font-weight:800}.cdash-sub{font-size:10px;color:rgba(255,255,255,.55)}.cdash-close{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;border-radius:7px;padding:8px 11px;cursor:pointer}
+.cdash-head{position:sticky;top:0;z-index:2;background:#111827;color:#fff;padding:16px 18px;display:flex;justify-content:space-between;gap:12px;align-items:center}.cdash-title{font-size:18px;font-weight:800}.cdash-sub{font-size:10px;color:rgba(255,255,255,.55)}.cdash-head-actions{display:flex;gap:8px;align-items:center}.cdash-close,.cdash-export{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;border-radius:7px;padding:8px 11px;cursor:pointer}.cdash-export{border-color:rgba(74,222,128,.35);background:rgba(22,163,74,.16);color:#dcfce7;font-weight:750}.cdash-export:hover{background:rgba(22,163,74,.28)}
 .cdash-body{padding:16px}.cdash-filters{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px;margin-bottom:14px}.cdash-filters label{font-size:9px;font-weight:800;color:#6b7280;display:grid;gap:4px}.cdash-filters input,.cdash-filters select{border:1px solid #d1d5db;background:#fff;border-radius:7px;padding:8px 9px;font-size:11px;color:#111827}
 .cdash-kpis{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:10px;margin-bottom:14px}.cdash-kpi{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:13px}.cdash-kpi .k{font-size:9px;color:#6b7280;font-weight:800;text-transform:uppercase}.cdash-kpi .v{font-size:19px;color:#111827;font-weight:850;margin-top:4px}.cdash-kpi.loss .v{color:#b91c1c}
 .cdash-tablewrap{overflow:auto;background:#fff;border:1px solid #e5e7eb;border-radius:10px}.cdash-table{width:100%;border-collapse:collapse;min-width:1040px}.cdash-table th{position:sticky;top:0;background:#f3f4f6;color:#4b5563;font-size:9px;text-transform:uppercase;padding:9px 8px;border-bottom:1px solid #e5e7eb;text-align:left}.cdash-table td{font-size:10px;color:#111827;padding:9px 8px;border-bottom:1px solid #f0f0f0}.cdash-num{text-align:right}.cdash-status{display:inline-block;padding:3px 6px;border-radius:999px;font-size:8px;font-weight:800}.cdash-status.p{background:#fef3c7;color:#92400e}.cdash-status.a{background:#dcfce7;color:#166534}@media(max-width:900px){.cdash-filters{grid-template-columns:1fr 1fr}.cdash-kpis{grid-template-columns:1fr 1fr}}
