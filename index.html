@@ -563,6 +563,10 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
 
 .bl{background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4;}
 .bc{background:#f3eadb;color:#785c36;border:1px solid #dcc9aa;}
+.ap[data-a="laboral"]{background:#fce7f3;color:#9d174d;border-color:#f9a8d4;}
+.ap[data-a="civil"]{background:#f3eadb;color:#785c36;border-color:#dcc9aa;}
+.ap[data-a="laboral"].on{box-shadow:0 0 0 2px #ec4899;}
+.ap[data-a="civil"].on{box-shadow:0 0 0 2px #b49971;}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -570,6 +574,29 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
 
 <style id="rx-style">
 .rx-overlay,.rx-list-overlay{position:fixed;inset:0;z-index:130000;background:rgba(15,18,28,.72);overflow:auto;padding:18px;font-family:Inter,Arial,sans-serif}.rx-tools{width:min(820px,96vw);margin:0 auto 10px;display:flex;gap:8px;justify-content:flex-end}.rx-tools button,.rx-list-head button,.rx-list-actions button{border:1px solid #d1d5db;background:#fff;border-radius:7px;padding:8px 11px;font-size:11px;font-weight:700;cursor:pointer}.rx-page{width:184.6mm;min-height:271.6mm;margin:0 auto;background:#fff;color:#1a1f2e;padding:0 13.3mm 4mm;box-shadow:0 10px 35px rgba(0,0,0,.28);display:flex;flex-direction:column}.rx-top{display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:flex-start;margin:0 -9mm;min-height:26mm}.rx-logo{height:26mm}.rx-folio{font-size:7px;color:#b9bfcb;letter-spacing:.14em;text-transform:uppercase;padding-top:2mm}.rx-title{align-self:center;font-family:"Cormorant Garamond",serif;font-size:20px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;border-bottom:1.5px solid #b07d2e;padding-bottom:5px;margin-top:8mm}.rx-date{text-align:right;font-size:10.5px;font-weight:700;text-transform:uppercase;margin-top:12mm}.rx-issuer{font-size:10.5px;font-weight:700;text-transform:uppercase;line-height:1.45;margin-top:12mm}.rx-issuer span{font-weight:500;color:#4a5066;text-transform:none}.rx-body{font-size:11px;line-height:1.85;text-align:justify;margin-top:20mm}.rx-incisos{margin:6mm 0 0 14px}.rx-inc{display:flex;align-items:baseline;gap:7px;font-size:11px;margin-bottom:5px}.rx-inc>b{color:#b07d2e}.rx-inc>i{flex:1;border-bottom:1px dotted #b9bfcb;transform:translateY(-3px)}.rx-inc>strong{white-space:nowrap}.rx-tax{display:flex;justify-content:flex-end;gap:20px;font-size:9px;color:#5a6175;margin-top:7mm}.rx-total{align-self:flex-end;display:flex;gap:18px;border:1px solid #1a1f2e;padding:3px 12px;text-transform:uppercase;font-size:10.5px;letter-spacing:.12em;margin-top:8mm}.rx-paid,.rx-promise{align-self:flex-end;margin-top:5px;padding:4px 9px;border-radius:999px;font-size:8px;font-weight:800;letter-spacing:.08em}.rx-paid{background:#dcfce7;color:#166534}.rx-promise{background:#fef3c7;color:#92400e}.rx-sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;text-align:center;margin-top:auto;padding-top:22mm}.rx-sigs>div{display:flex;flex-direction:column;align-items:center}.rx-sigs b{font-size:10px;letter-spacing:.3em}.rx-sigs i{width:52mm;border-bottom:1px solid #5a6175;margin:11mm 0 5px}.rx-sigs span{font-size:10px}.rx-footer{margin-top:12mm;padding-top:6px;border-top:1.5px solid #8ba6bd;text-align:center;font-family:"Cormorant Garamond",serif;font-size:11px;line-height:1.45;color:#b07d2e}.rx-list-card{width:min(1050px,96vw);margin:20px auto;background:#fff;border-radius:12px;overflow:hidden}.rx-list-head{padding:15px 18px;background:#1a1f2e;color:#fff;display:flex;justify-content:space-between;align-items:center}.rx-list-head h2{margin:0;font-size:18px}.rx-list-head small{color:#cbd5e1}.rx-list-body{max-height:78vh;overflow:auto}.rx-list-row{display:grid;grid-template-columns:1fr 180px 220px;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid #e5e7eb}.rx-list-row>div{display:flex;flex-direction:column;gap:3px}.rx-list-row span,.rx-list-row small{font-size:10px;color:#64748b}.rx-s-ok,.rx-s-warn{display:inline-block;width:max-content;padding:3px 7px;border-radius:999px!important;font-weight:800!important}.rx-s-ok{background:#dcfce7;color:#166534!important}.rx-s-warn{background:#fef3c7;color:#92400e!important}.rx-list-actions{flex-direction:row!important;justify-content:flex-end}@media(max-width:800px){.rx-page{width:100%;min-height:0;padding:10px 14px}.rx-list-row{grid-template-columns:1fr}.rx-list-actions{justify-content:flex-start!important}.rx-sigs{gap:12px}.rx-sigs i{width:34vw}}@media print{.rx-tools{display:none!important}.rx-overlay{position:static;background:#fff;padding:0}.rx-page{box-shadow:none;margin:0}}
+</style>
+<style id="ma-area-colors">
+.bl{background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4;}
+.bc{background:#f3eadb;color:#785c36;border:1px solid #dcc9aa;}
+.ap[data-a="laboral"]{background:#fce7f3;color:#9d174d;border-color:#f9a8d4;}
+.ap[data-a="civil"]{background:#f3eadb;color:#785c36;border-color:#dcc9aa;}
+.ap[data-a="laboral"].on{box-shadow:0 0 0 2px #ec4899;}
+.ap[data-a="civil"].on{box-shadow:0 0 0 2px #b49971;}
+
+/* Colores de área en selectores de conceptos, filtros y editor. */
+option[value="laboral"]{background:#fce7f3;color:#9d174d;}
+option[value="civil"]{background:#f3eadb;color:#785c36;}
+</style>
+<style id="area-chips-civil-laboral">
+/* Civil y Laboral: chips comunes, vista previa y compatibilidad con folios guardados. */
+.bdg.area-civil,.pv-bdg.pv-area-civil,.bdg.bc,.pv-bdg.pv-bc{
+  background:#f3eadb;color:#785c36;border:1px solid #dcc9aa;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
+.bdg.area-laboral,.pv-bdg.pv-area-laboral,.bdg.bl,.pv-bdg.pv-bl{
+  background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
 </style>
 </head>
 <body>
@@ -1183,8 +1210,8 @@ function _metaArea(key){
     ambiental:{al:"Ambiental",ab:"ba"},
     juridico:{al:"Jurídico",ab:"bj"},
     obras:{al:"Obras",ab:"bo"},
-    civil:{al:"Civil",ab:"bc"},
-    laboral:{al:"Laboral",ab:"bl"},
+    civil:{al:"Civil",ab:"area-civil"},
+    laboral:{al:"Laboral",ab:"area-laboral"},
     igualas:{al:"Igualas",ab:"bg"},
     custom:{al:"Personalizados",ab:"bj"}
   }[key];
@@ -1962,8 +1989,8 @@ obras:{l:"Obras",b:"bo",items:[
 {id:"dc07",s:"Documentos",n:"Constancia de adeudos",d:228,t:0,h:0,nota:"Art. 248 VIII"},
 {id:"dc08",s:"Documentos",n:"Certificación de pago",d:114,t:0,h:0,nota:"Art. 248 XI"}
 ]},
-civil:{l:"Civil",b:"bc",items:[]},
-laboral:{l:"Laboral",b:"bl",items:[]},
+civil:{l:"Civil",b:"area-civil",items:[]},
+laboral:{l:"Laboral",b:"area-laboral",items:[]},
 igualas:{l:"Igualas",b:"bg",items:[]},
 protcivil:{l:"Protección Civil",b:"bp",items:[
 {id:"bi07",s:"Protección Civil",n:"Medidas básicas de Protección Civil",d:0,t:10500,h:0},
@@ -4774,7 +4801,7 @@ function setServiciosExtra(arr){
 }
 
 const AREA_LABELS={"giros":"Giros Mercantiles","juridico":"Jurídico","obras":"Obras","civil":"Civil","laboral":"Laboral","igualas":"Igualas","protcivil":"Prot. Civil","ambiental":"Ambiental","custom":"Personalizados"};
-const AREA_BADGES={"giros":"bg","juridico":"bj","obras":"bo","civil":"bc","laboral":"bl","igualas":"bg","protcivil":"bp","ambiental":"ba","custom":"bj"};
+const AREA_BADGES={"giros":"bg","juridico":"bj","obras":"bo","civil":"area-civil","laboral":"area-laboral","igualas":"bg","protcivil":"bp","ambiental":"ba","custom":"bj"};
 
 function renderTablaServicios(){
   const wrap=document.getElementById("__srv_tabla__");
@@ -4797,7 +4824,7 @@ function renderTablaServicios(){
       if(q&&!String(disp.n||"").toLowerCase().includes(q)&&!String(disp.s||"").toLowerCase().includes(q))return;
       const meta={
         giros:{l:"Giros Mercantiles",b:"bg"}, juridico:{l:"Jurídico",b:"bj"},
-        obras:{l:"Obras",b:"bo"}, civil:{l:"Civil",b:"bc"}, laboral:{l:"Laboral",b:"bl"},
+        obras:{l:"Obras",b:"bo"}, civil:{l:"Civil",b:"area-civil"}, laboral:{l:"Laboral",b:"area-laboral"},
         igualas:{l:"Igualas",b:"bg"}, protcivil:{l:"Protección Civil",b:"bp"},
         ambiental:{l:"Ambiental",b:"ba"}, custom:{l:"Personalizados",b:"bj"}
       }[realArea]||{l:area.l,b:area.b};
