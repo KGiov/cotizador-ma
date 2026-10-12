@@ -1174,9 +1174,25 @@ function _sanearObjetoTexto(v){
   }
   return typeof v==="string"?_fixTextoUTF8(v):v;
 }
+function _metaArea(key){
+  return {
+    giros:{al:"Giros Mercantiles",ab:"bg"},
+    protcivil:{al:"Protección Civil",ab:"bp"},
+    ambiental:{al:"Ambiental",ab:"ba"},
+    juridico:{al:"Jurídico",ab:"bj"},
+    obras:{al:"Obras",ab:"bo"},
+    civil:{al:"Civil",ab:"bj"},
+    laboral:{al:"Laboral",ab:"bo"},
+    igualas:{al:"Igualas",ab:"bg"},
+    custom:{al:"Personalizados",ab:"bj"}
+  }[key];
+}
+
 function _normalizarAreaServicio(e){
   if(!e||typeof e!=="object")return e;
   const a=String(e.aKey||"").toLowerCase();
+  const meta=_metaArea(a);
+  if(meta){e.aKey=a;e.al=meta.al;e.ab=meta.ab;return e;}
   const s=String(e.s||"").toLowerCase();
   if(a==="protcivil"||s.includes("protección civil")||s.includes("proteccion civil")){
     e.aKey="protcivil"; e.al="Protección Civil"; e.ab="bp";
@@ -1299,19 +1315,7 @@ function _programarRecalculoPaquete(){
 }
 
 function _areaItem(obj,aKey){
-  const meta={
-    giros:{al:"Giros Mercantiles",ab:"bg"},
-    protcivil:{al:"Protección Civil",ab:"bp"},
-    ambiental:{al:"Ambiental",ab:"ba"},
-    juridico:{al:"Jurídico",ab:"bj"},
-    obras:{al:"Obras",ab:"bo"},
-    civil:{al:"Civil",ab:"bj"},
-    laboral:{al:"Laboral",ab:"bo"},
-    igualas:{al:"Igualas",ab:"bg"},
-    civil:{al:"Civil",ab:"bj"},
-    laboral:{al:"Laboral",ab:"bo"},
-    igualas:{al:"Igualas",ab:"bg"}
-  }[aKey]||{al:"Giros Mercantiles",ab:"bg"};
+  const meta=_metaArea(aKey)||_metaArea("giros");
   return Object.assign({d:0,t:0,h:0,aKey:aKey,al:meta.al,ab:meta.ab,_autoPack:true},obj);
 }
 
@@ -3835,14 +3839,8 @@ function renderCtypeFields(){
 
 function getCustomArea(){
   const key=(document.getElementById("custom-area")?.value||curA||"giros");
-  const mapa={
-    giros:{al:"Giros Mercantiles",ab:"bg"},
-    protcivil:{al:"Protección Civil",ab:"bp"},
-    ambiental:{al:"Ambiental",ab:"ba"},
-    juridico:{al:"Jurídico",ab:"bj"},
-    obras:{al:"Obras",ab:"bo"}
-  };
-  return {...(mapa[key]||mapa.giros),aKey:key};
+  const aKey=_metaArea(key)?key:"giros";
+  return {..._metaArea(aKey),aKey};
 }
 
 function addCustomItem(){
@@ -3924,8 +3922,6 @@ async function saveCustomToBase(){
 }
 function clearCustomForm(){
   document.getElementById("custom-name").value="";
-  const areaSel=document.getElementById("custom-area");
-  if(areaSel && ["giros","protcivil","ambiental","juridico","obras","civil","laboral","igualas"].includes(curA)) areaSel.value=curA;
   document.getElementById("custom-sub").value="";
   document.getElementById("custom-nota").value="";
   ctypeActive.clear();
@@ -4395,7 +4391,7 @@ function _restaurarSnapshot(s,folio){
   document.getElementById("chk-zonal").checked=s.impacto==="zonal";
   document.getElementById("chk-apertura").checked=s.apertura==="apertura"||s.apertura==="apertura_regularizacion";
   document.getElementById("chk-regular").checked=s.apertura==="regularizacion";
-  items=s.items?JSON.parse(JSON.stringify(s.items)):[];
+  items=s.items?JSON.parse(JSON.stringify(s.items)).map(_normalizarAreaServicio):[];
   currentFolio=folio;
   document.getElementById("folio").textContent=currentFolio;
   rdDatos();rdNotas();render();
@@ -4543,7 +4539,7 @@ function buildTabulador(){
     const porPagar=total-ant;
     const ivaBadge=conIva?'<span style="font-size:8px;background:#eff5fd;color:#2563a8;border:1px solid #c8dcf5;padding:1px 4px;border-radius:10px;margin-left:3px;font-weight:700;">+IVA</span>':"";
     return `<tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:7px;white-space:nowrap;"><span class="bdg ${it.al==='Giros Mercantiles'?'bg':it.al==='Jurídico'?'bj':it.al==='Obras'?'bo':it.al==='Protección Civil'?'bp':'ba'}">${it.al}</span></td>
+      <td style="padding:7px;white-space:nowrap;"><span class="bdg ${(_metaArea(it.aKey)||{}).ab||it.ab||"ba"}">${it.al}</span></td>
       <td style="padding:7px;white-space:nowrap;font-size:10px;">${hoy}</td>
       <td style="padding:7px;font-size:10px;">${n||""}<br><span style="color:var(--ink3);">${giro||""}</span></td>
       <td style="padding:7px;font-size:10px;color:var(--ink3);">${dom||""}</td>
@@ -4896,14 +4892,7 @@ async function guardarFormServicio(){
   const n=_fixTextoUTF8(document.getElementById("srvf_n").value.trim());
   if(!n){alert("El nombre del concepto es obligatorio.");return;}
   const aKey=document.getElementById("srvf_a").value;
-  const areaMeta={
-    giros:{al:"Giros Mercantiles",ab:"bg"},
-    protcivil:{al:"Protección Civil",ab:"bp"},
-    ambiental:{al:"Ambiental",ab:"ba"},
-    juridico:{al:"Jurídico",ab:"bj"},
-    obras:{al:"Obras",ab:"bo"},
-    custom:{al:"Personalizados",ab:"bj"}
-  }[aKey]||{al:"Personalizados",ab:"bj"};
+  const areaMeta=_metaArea(aKey)||_metaArea("custom");
 
   const datos={
     n:n,
