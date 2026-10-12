@@ -561,6 +561,8 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
   .acts>*{flex:0 0 auto;}
 }
 
+.bl{background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4;}
+.bc{background:#f3eadb;color:#785c36;border:1px solid #dcc9aa;}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -1181,8 +1183,8 @@ function _metaArea(key){
     ambiental:{al:"Ambiental",ab:"ba"},
     juridico:{al:"Jurídico",ab:"bj"},
     obras:{al:"Obras",ab:"bo"},
-    civil:{al:"Civil",ab:"bj"},
-    laboral:{al:"Laboral",ab:"bo"},
+    civil:{al:"Civil",ab:"bc"},
+    laboral:{al:"Laboral",ab:"bl"},
     igualas:{al:"Igualas",ab:"bg"},
     custom:{al:"Personalizados",ab:"bj"}
   }[key];
@@ -1960,8 +1962,8 @@ obras:{l:"Obras",b:"bo",items:[
 {id:"dc07",s:"Documentos",n:"Constancia de adeudos",d:228,t:0,h:0,nota:"Art. 248 VIII"},
 {id:"dc08",s:"Documentos",n:"Certificación de pago",d:114,t:0,h:0,nota:"Art. 248 XI"}
 ]},
-civil:{l:"Civil",b:"bj",items:[]},
-laboral:{l:"Laboral",b:"bo",items:[]},
+civil:{l:"Civil",b:"bc",items:[]},
+laboral:{l:"Laboral",b:"bl",items:[]},
 igualas:{l:"Igualas",b:"bg",items:[]},
 protcivil:{l:"Protección Civil",b:"bp",items:[
 {id:"bi07",s:"Protección Civil",n:"Medidas básicas de Protección Civil",d:0,t:10500,h:0},
@@ -2650,6 +2652,8 @@ const AUTO_LEGACY_IDS=new Set([
 ]);
 function selA(a){
   curA=a;curT=null;
+  const customArea=document.getElementById("custom-area");
+  if(customArea && Array.from(customArea.options).some(o=>o.value===a))customArea.value=a;
   document.querySelectorAll(".ap").forEach(b=>b.classList.remove("on"));
   const btn=document.querySelector('[data-a="'+a+'"]');
   if(btn)btn.classList.add("on");
@@ -3029,6 +3033,7 @@ function render(){
   tb.innerHTML="";
   let tD=0,tT=0,tH=0;
   items.forEach((it,i)=>{
+    _normalizarAreaServicio(it);
     const tr=document.createElement("tr");
     // Calcular descuento iguala
     let tReal=it.t;
@@ -4769,7 +4774,7 @@ function setServiciosExtra(arr){
 }
 
 const AREA_LABELS={"giros":"Giros Mercantiles","juridico":"Jurídico","obras":"Obras","civil":"Civil","laboral":"Laboral","igualas":"Igualas","protcivil":"Prot. Civil","ambiental":"Ambiental","custom":"Personalizados"};
-const AREA_BADGES={"giros":"bg","juridico":"bj","obras":"bo","civil":"bj","laboral":"bo","igualas":"bg","protcivil":"bp","ambiental":"ba","custom":"bj"};
+const AREA_BADGES={"giros":"bg","juridico":"bj","obras":"bo","civil":"bc","laboral":"bl","igualas":"bg","protcivil":"bp","ambiental":"ba","custom":"bj"};
 
 function renderTablaServicios(){
   const wrap=document.getElementById("__srv_tabla__");
@@ -4792,7 +4797,7 @@ function renderTablaServicios(){
       if(q&&!String(disp.n||"").toLowerCase().includes(q)&&!String(disp.s||"").toLowerCase().includes(q))return;
       const meta={
         giros:{l:"Giros Mercantiles",b:"bg"}, juridico:{l:"Jurídico",b:"bj"},
-        obras:{l:"Obras",b:"bo"}, civil:{l:"Civil",b:"bj"}, laboral:{l:"Laboral",b:"bo"},
+        obras:{l:"Obras",b:"bo"}, civil:{l:"Civil",b:"bc"}, laboral:{l:"Laboral",b:"bl"},
         igualas:{l:"Igualas",b:"bg"}, protcivil:{l:"Protección Civil",b:"bp"},
         ambiental:{l:"Ambiental",b:"ba"}, custom:{l:"Personalizados",b:"bj"}
       }[realArea]||{l:area.l,b:area.b};
