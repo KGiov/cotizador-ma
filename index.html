@@ -590,13 +590,14 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
 </style>
 <style>
 /* Únicamente términos PC; tabla y totales originales de v61 intactos. */
-.ma-pc-terms{display:none;font:10px/1.5 Arial,sans-serif;color:#172b45;}
-.ma-pc-terms h2{font-size:12px;break-after:avoid;}
+.ma-pc-terms{display:none;font-family:"Inter",Arial,sans-serif;font-size:10px;line-height:1.7;color:#4a5066;margin-top:12px;padding:12px 16px;background:#f8f9fb;border:1px solid #e2e5ec;border-radius:5px;}
+.ma-pc-terms h2{font-family:inherit;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8890a4;margin:0 0 10px;break-after:avoid;page-break-after:avoid;}
+.ma-pc-terms b{font-weight:600;color:#1a1f2e;}
 .ma-pc-terms p{margin:8px 0;orphans:3;widows:3;break-inside:avoid;}
 .ma-pc-terms .ma-sub{margin-left:22px;}
-body.pdf-captura .ma-pc-terms:not([hidden]){display:block;break-before:page;page-break-before:always;}
+body.pdf-captura .ma-pc-terms:not([hidden]){display:block;break-before:auto;page-break-before:auto;}
 @media print{
- #pv-paper .ma-pc-terms:not([hidden]){display:block!important;break-before:page;page-break-before:always;}
+ #pv-paper .ma-pc-terms:not([hidden]){display:block!important;break-before:auto;page-break-before:auto;}
  #pv-paper .ma-pc-terms[hidden]{display:none!important;}
 }
 </style>
@@ -6970,7 +6971,7 @@ function _maBuildPrint(){
  const paper=document.getElementById("pv-paper");
  if(!paper)return;
  let terms=document.getElementById("ma-pc-terms");
- if(!terms){terms=document.createElement("section");terms.id="ma-pc-terms";terms.className="ma-pc-terms";terms.innerHTML=MA_PC_TERMS;paper.appendChild(terms);}
+ if(!terms){terms=document.createElement("section");terms.id="ma-pc-terms";terms.className="ma-pc-terms";terms.innerHTML=MA_PC_TERMS;paper.querySelector(".pv-nota-iva").after(terms);}
  terms.hidden=!items.some(_maEsPC);
 }
 const _maOriginalBuildPreview=buildPreview;
@@ -6980,4 +6981,36 @@ window.addEventListener("beforeprint",_maBuildPrint);
 const _maOriginalDownload=descargarPDF;
 descargarPDF=async function(){_maBuildPrint();return _maOriginalDownload.apply(this,arguments);};
 
+</script>
+
+<script>
+// Cancelación local solicitada para la cotización eliminada COT-2026-441.
+// No envía su contenido ni un borrado a la nube; los demás folios siguen igual.
+function _maCancelar441(){
+ const folio="COT-2026-441";
+ clearTimeout(_regPushTimers[folio]);delete _regPushTimers[folio];
+ _regPendientes.delete(folio);_guardarRegPend();
+ const f=(folioRegistry||[]).find(x=>x&&x.folio===folio);
+ if(f)f._deleted=true;
+ _lsSet("ma_folio_registry",JSON.stringify(folioRegistry||[]));
+}
+const _maSyncEntryOriginal=_syncRegistryEntry;
+_syncRegistryEntry=async function(folio,urgente){
+ if(folio==="COT-2026-441"){_maCancelar441();_actualizarPill();return;}
+ return _maSyncEntryOriginal.apply(this,arguments);
+};
+const _maGuardarLocalOriginal=_guardarRegistroLocal;
+_guardarRegistroLocal=function(){
+ const result=_maGuardarLocalOriginal.apply(this,arguments);
+ _maCancelar441();_actualizarPill();return result;
+};
+const _maAdoptarOriginal=_adoptarRegistryServidor;
+_adoptarRegistryServidor=function(reg){
+ // Evita que una copia que siga en la nube reaparezca en este dispositivo.
+ const filtered=Array.isArray(reg)?reg.filter(f=>!f||f.folio!=="COT-2026-441"):reg;
+ _maCancelar441();return _maAdoptarOriginal.call(this,filtered);
+};
+_maCancelar441();
+if(typeof renderFolioList==="function")renderFolioList();
+_actualizarPill();
 </script>
