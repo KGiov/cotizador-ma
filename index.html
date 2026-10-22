@@ -589,33 +589,15 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
 }
 </style>
 <style>
-/* Formato exclusivo de impresión y PDF; el editor conserva sus columnas. */
-.ma-print-table,.ma-pc-terms{display:none;}
-.ma-print-table{width:100%;border-collapse:collapse;table-layout:fixed;font:11px Arial,sans-serif;color:#172b45;}
-.ma-print-table th,.ma-print-table td{padding:9px 8px;vertical-align:top;}
-.ma-print-table th{background:#234f79;color:white;text-align:left;font-size:10px;}
-.ma-print-table .ma-money{text-align:right;white-space:nowrap;}
-.ma-print-table tbody tr:nth-child(even){background:#f4f5f6;}
-.ma-print-table tbody td{border-bottom:1px solid #e3e7eb;}
-.ma-print-table .pv-cs,.ma-print-table .pv-det{color:#455468;font-size:10px;line-height:1.5;}
-.ma-print-table .ma-total td{background:#c9e0f1;font-weight:bold;border-top:2px solid #234f79;}
-.ma-print-table tbody tr:nth-last-child(2){break-after:avoid;page-break-after:avoid;}
-.ma-print-table tbody tr{animation:none!important;opacity:1!important;}
-.ma-print-table small{display:block;font-size:8px;font-weight:normal;margin-bottom:4px;}
-.ma-pc-terms{font:10px/1.5 Arial,sans-serif;color:#172b45;margin-top:20px;}
+/* Únicamente términos PC; tabla y totales originales de v61 intactos. */
+.ma-pc-terms{display:none;font:10px/1.5 Arial,sans-serif;color:#172b45;}
 .ma-pc-terms h2{font-size:12px;break-after:avoid;}
 .ma-pc-terms p{margin:8px 0;orphans:3;widows:3;break-inside:avoid;}
 .ma-pc-terms .ma-sub{margin-left:22px;}
-body.pdf-captura #pv-paper>.pv-table,body.pdf-captura #pv-tots{display:none!important;}
-body.pdf-captura .ma-print-table{display:table;}
-body.pdf-captura .ma-pc-terms:not([hidden]){display:block;}
+body.pdf-captura .ma-pc-terms:not([hidden]){display:block;break-before:page;page-break-before:always;}
 @media print{
- #pv-paper>.pv-table,#pv-tots{display:none!important;}
- #pv-paper .ma-print-table{display:table!important;}
- #pv-paper .ma-pc-terms:not([hidden]){display:block!important;}
+ #pv-paper .ma-pc-terms:not([hidden]){display:block!important;break-before:page;page-break-before:always;}
  #pv-paper .ma-pc-terms[hidden]{display:none!important;}
- #pv-paper .ma-print-table thead{display:table-header-group;}
- #pv-paper .ma-print-table tr{break-inside:avoid;page-break-inside:avoid;}
 }
 </style>
 </head>
@@ -6987,26 +6969,8 @@ function _maEsPC(it){
 function _maBuildPrint(){
  const paper=document.getElementById("pv-paper");
  if(!paper)return;
- let table=document.getElementById("ma-print-table");
- if(!table){table=document.createElement("table");table.id="ma-print-table";table.className="ma-print-table";document.getElementById("pv-tots").after(table);}
- table.innerHTML='<colgroup><col style="width:55%"><col style="width:15%"><col style="width:14%"><col style="width:16%"></colgroup><thead><tr><th>CONCEPTO Y DESCRIPCIÓN</th><th class="ma-money">Precio unitario</th><th class="ma-money">IVA</th><th class="ma-money">Subtotal</th></tr></thead><tbody></tbody>';
- const tbody=table.tBodies[0];let baseTotal=0,ivaTotal=0;
- const iguala=document.getElementById("chk-iguala").checked;
- items.forEach((it,i)=>{
-  const terceros=iguala&&it.t>0?Math.round(it.t*0.80):Number(it.t)||0;
-  const base=terceros+(Number(it.d)||0)+(Number(it.h)||0);
-  // IVA vigente: terceros y honorarios; tesorería exenta.
-  const iva=Math.round((terceros+(Number(it.h)||0))*16)/100;
-  baseTotal+=base;ivaTotal+=iva;
-  const tr=tbody.insertRow();const desc=tr.insertCell();
-  const source=document.querySelectorAll("#pv-tbody tr")[i];
-  if(source){desc.innerHTML=source.cells[1].innerHTML;desc.querySelectorAll("[contenteditable]").forEach(e=>e.removeAttribute("contenteditable"));if(!it.nota)desc.querySelector(".editable-nota-pv")?.remove();}
-  [base,iva,base+iva].forEach(v=>{const td=tr.insertCell();td.className="ma-money";td.textContent=it.v&&!base?"Por cotizar":mxn(v);});
- });
- const tr=tbody.insertRow();tr.className="ma-total";
- ["TOTAL",'<small>Base / sin IVA</small>'+mxn(baseTotal),'<small>IVA</small>'+mxn(ivaTotal),'<small>Total con IVA</small>'+mxn(baseTotal+ivaTotal)].forEach((v,i)=>{const td=tr.insertCell();td.innerHTML=v;if(i)td.className="ma-money";});
  let terms=document.getElementById("ma-pc-terms");
- if(!terms){terms=document.createElement("section");terms.id="ma-pc-terms";terms.className="ma-pc-terms";terms.innerHTML=MA_PC_TERMS;document.getElementById("pv-notas").after(terms);}
+ if(!terms){terms=document.createElement("section");terms.id="ma-pc-terms";terms.className="ma-pc-terms";terms.innerHTML=MA_PC_TERMS;paper.appendChild(terms);}
  terms.hidden=!items.some(_maEsPC);
 }
 const _maOriginalBuildPreview=buildPreview;
