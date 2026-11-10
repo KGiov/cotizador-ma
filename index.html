@@ -4966,13 +4966,33 @@ async function guardarFormServicio(){
     service={...datos,id:"custom_"+Date.now()+"_"+Math.random().toString(36).slice(2,6)};
   }
 
+  const boton=document.querySelector('#__srv_form__ button[onclick="guardarFormServicio()"]');
+  if(boton?.disabled)return;
+  const textoBoton=boton?.textContent;
+  if(boton){
+    boton.disabled=true;
+    boton.textContent="Guardando…";
+  }
+  const solicitud=JSON.stringify({action:"updateService",service:service,base:isBase});
+
   try{
-    const r=await fetch(SYNC_URL,{
-      method:"POST",
-      headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify({action:"updateService",service:service,base:isBase})
-    });
-    const j=await r.json();
+    const esperas=[1200,2500];
+    let j;
+    for(let intento=0;intento<=esperas.length;intento++){
+      const r=await fetch(SYNC_URL,{
+        method:"POST",
+        headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body:solicitud
+      });
+      j=await r.json();
+      if(j?.ok!==false || j.busy!==true)break;
+      if(intento===esperas.length){
+        alert("El servidor sigue ocupado. Los datos permanecen en el formulario para volver a intentar.");
+        return;
+      }
+      if(boton)boton.textContent="Servidor ocupado. Reintentando…";
+      await new Promise(resolve=>setTimeout(resolve,esperas[intento]+Math.floor(Math.random()*500)));
+    }
     if(!j||!j.ok)throw new Error((j&&j.error)||"Respuesta inválida");
 
     if(isBase){
@@ -4999,7 +5019,12 @@ async function guardarFormServicio(){
     mostrarToastCliente("✅ Servicio actualizado en la base compartida");
   }catch(e){
     console.error("guardarFormServicio",e);
-    alert("No se pudo guardar el cambio en la nube. No se aplicó como cambio compartido.");
+    alert("No se pudo confirmar el guardado. Revisa si el servicio aparece en el catálogo compartido antes de volver a intentar.");
+  }finally{
+    if(boton){
+      boton.disabled=false;
+      boton.textContent=textoBoton;
+    }
   }
 }
 
