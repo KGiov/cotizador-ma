@@ -1692,6 +1692,7 @@ function _aplicarPaqueteAutomatico(mostrarAviso=true){
   if(tipo==="vecinal"||tipo==="zonal"){
     p.push(_areaItem({id:"auto_"+tipo+"_predial",s:"Constancias",n:"Constancia de no adeudos predial",d:228},"giros"));
     p.push(_areaItem({id:"auto_"+tipo+"_agua",s:"Constancias",n:"Constancia de no adeudos agua",d:228},"giros"));
+    p.push(_areaItem({id:"auto_civil_cesion_derechos",s:"Contratos",n:"Honorarios por elaboración de contrato de cesión de derechos",t:8000},"civil"));
   }
   p.push(_vbAutomatico(tipo,m2));
 
