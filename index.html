@@ -590,7 +590,8 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
 </style>
 <style>
 /* Únicamente términos PC; tabla y totales originales de v61 intactos. */
-.ma-pc-terms{display:none;font-family:"Inter",Arial,sans-serif;font-size:10px;line-height:1.7;color:#4a5066;margin-top:12px;padding:12px 16px;background:#f8f9fb;border:1px solid #e2e5ec;border-radius:5px;}
+.ma-pc-terms{font-family:"Inter",Arial,sans-serif;font-size:10px;line-height:1.7;color:#4a5066;margin-top:12px;padding:12px 16px;background:#f8f9fb;border:1px solid #e2e5ec;border-radius:5px;}
+.ma-pc-terms[hidden]{display:none;}
 .ma-pc-terms h2{font-family:inherit;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8890a4;margin:0 0 10px;break-after:avoid;page-break-after:avoid;}
 .ma-pc-terms b{font-weight:600;color:#1a1f2e;}
 .ma-pc-terms p{margin:8px 0;orphans:3;widows:3;break-inside:avoid;}
@@ -1154,7 +1155,7 @@ function _fixTextoUTF8(v){
     try{
       const bytes=Uint8Array.from([...s].map(ch=>ch.charCodeAt(0)&255));
       const dec=new TextDecoder('utf-8',{fatal:false}).decode(bytes);
-      if(dec && !dec.includes('�')) s=dec;
+      if(dec && !dec.includes(' ')) s=dec;
     }catch(e){}
   }
   // Reparaciones de corrupciones históricas observadas en _KV / textos impresos.
@@ -3441,6 +3442,7 @@ function buildPreview(){
         }else{
           if(txt!==items[idx].s){items[idx].s=txt;}
         }
+        _maBuildPrint();
       });
     });
     pvtb.querySelectorAll(".editable-nota-pv[contenteditable='true']").forEach(el=>{
@@ -6981,9 +6983,23 @@ function _renderDashboardCotizaciones(){
 <script>
 const MA_PC_TERMS="<h2>TÉRMINOS Y CONDICIONES.</h2>\n<p><b>a) INICIO Y CONCLUSIÓN:</b> Se requiere un anticipo del 50% para iniciar con el servicio. El 50% restante deberá liquidarse al momento de la conclusión para la entrega de la carpeta física que acredita el trabajo realizado.</p>\n<p><b>b) PLAN DE PAGOS:</b> A solicitud del cliente, se podrá diferir el precio a distintas parcialidades.</p>\n<p><b>c) PLAZOS COMPROMISO:</b> Para efecto de brindar un mejor servicio y cumplir con los plazos legales, nos sujetaremos a las siguientes condiciones:</p>\n<p class=\"ma-sub\">I. El Cliente se compromete a proporcionar todos los requisitos documentales en un plazo máximo de 4 semanas a partir de haber pagado el anticipo, de lo contrario correrá una penalización de $5,000 adicionales al precio establecido.</p>\n<p class=\"ma-sub\">II. El Despacho se compromete a concluir con el servicio en un plazo máximo de 8 semanas a partir de la recepción completa de los requisitos documentales, de lo contrario correrá una penalización de $5,000 en favor del cliente.</p>\n<p><b>d) CAPACITACIONES y SIMULACRO:</b> El curso tiene una duración de 8 hrs, se imparte en una sola sesión en las instalaciones del establecimiento. Cupo del personal a capacitar: hasta 14 personas.</p>\n<p class=\"ma-sub\">I. En caso de requerirlo, la duración del curso se podrá dividir en dos sesiones (4 hrs por día) con un incremento de $3,750 al precio total del servicio.</p>\n<p class=\"ma-sub\">II. En caso de desearlo, el curso para hasta 25 personas conlleva un aumento de $4,500 al precio total del servicio.</p>\n<p><b>e) DICTAMEN DE GAS:</b> Sujeto a cambios derivados de la visita del perito por tipo de gas, cantidad y capacidad de tanques, y/o antigüedad de los mismos.</p>\n<p class=\"ma-sub\">I. En caso de requerir Ultrasonido (para tanques con más de 10 años de antigüedad o con placa ilegible) se deberá contemplar un pago adicional por este servicio. Vigencia: 5 años.</p>\n<p><b>f) CROQUIS CON SEÑALÉTICA:</b> En caso de no contar con planos de inmueble en Autocad (DWG) tendrá un costo adicional.</p>";
 
+const MA_PC_TERMS_SIN_CE=MA_PC_TERMS
+ .split(/(?=<p><b>[a-f]\))/)
+ .filter(bloque=>!/^<p><b>[ce]\)/.test(bloque))
+ .map(bloque=>bloque.replace(/^<p><b>[df]\)/, inicio=>inicio==="<p><b>d)"?"<p><b>c)":"<p><b>d)"))
+ .join("");
+
+// El catálogo de aperturas también incluye estos trámites de Protección Civil.
+const _maNormPC=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+function _maEsPCSinCE(it){
+ const nombre=_maNormPC(it.n).replace(/[-–—]/g," ");
+ return /\bmedidas\s+basicas\b|\bno\s+obligatoriedad\b|\boficio\s+(?:de\s+)?no\s+obligacion\b|\b(?:oficio|constancia)\s+de\s+exencion\s+(?:del?\s+)?(?:pipc|programa interno de proteccion civil)\b/.test(nombre);
+}
+
 // Clasificación estructurada primero; catálogo para conceptos históricos sin área.
 function _maEsPC(it){
- const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+ const norm=_maNormPC;
+ if(_maEsPCSinCE(it))return true;
  const keys=[it.aKey,it.area,it.categoria,it.category,it.al].map(norm).filter(Boolean);
  const pc=v=>["protcivil","pc","proteccion civil","prot. civil"].includes(v);
  if(keys.some(pc))return true;
@@ -6997,8 +7013,18 @@ function _maBuildPrint(){
  const paper=document.getElementById("pv-paper");
  if(!paper)return;
  let terms=document.getElementById("ma-pc-terms");
- if(!terms){terms=document.createElement("section");terms.id="ma-pc-terms";terms.className="ma-pc-terms";terms.innerHTML=MA_PC_TERMS;paper.querySelector(".pv-nota-iva").after(terms);}
+ if(!terms){
+   terms=document.createElement("section");
+   terms.id="ma-pc-terms";
+   terms.className="ma-pc-terms";
+   paper.querySelector(".pv-nota-iva").after(terms);
+ }
  terms.hidden=!items.some(_maEsPC);
+ const sinCE=String(items.some(_maEsPCSinCE));
+ if(terms.dataset.sinCe!==sinCE){
+   terms.innerHTML=sinCE==="true"?MA_PC_TERMS_SIN_CE:MA_PC_TERMS;
+   terms.dataset.sinCe=sinCE;
+ }
 }
 const _maOriginalBuildPreview=buildPreview;
 buildPreview=function(){const result=_maOriginalBuildPreview.apply(this,arguments);_maBuildPrint();return result;};
