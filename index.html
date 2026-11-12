@@ -5890,9 +5890,9 @@ async function abrirModalRegistrarPago(idx,opts={}){
       // igual que el generador de recibos original.
       if(rec){
         _verRecibo(live.folio,rec.folio);
-        _xlToast(opts.promesa?"✅ Promesa guardada. Recibo "+rec.folio+" generado.":"✅ Pago registrado. Recibo "+rec.folio+" guardado.");
+        _xlToast(opts.promesa?"✅ Promesa guardada. Recibo "+rec.folio+" generado.":"✅ Pago registrado. Recibo "+rec.folio+" guardado."+_avisoAmbientalMariana(data));
       }else{
-        _xlToast(opts.promesa?"✅ Promesa guardada sin recibo.":"✅ Pago registrado sin recibo.");
+        _xlToast(opts.promesa?"✅ Promesa guardada sin recibo.":"✅ Pago registrado sin recibo."+_avisoAmbientalMariana(data));
       }
     }catch(e){q("#pgGuardar").disabled=false;q("#pgGuardar").textContent=opts.promesa?"GENERAR PROMESA / RECIBO":"CONFIRMAR PAGO";alert("No se pudo registrar: "+e.message);}
   };
@@ -5970,6 +5970,12 @@ async function _nubePing(silent){
   _renderSyncStatus();
 }
 
+function _avisoAmbientalMariana(data){
+  if(!data)return "";
+  if(data.ambientalMariana==="enviado")return " · Ambiental actualizado en Administración";
+  if(data.ambientalMariana==="pendiente")return " · Ambiental pendiente de sincronizar. No vuelvas a registrar el pago.";
+  return "";
+}
 async function _apiAutorizar(idx){
   const u=_syncURL();const f=folioRegistry[idx];
   if(!u||!f)return;
@@ -5994,7 +6000,7 @@ async function _apiAutorizar(idx){
       if(data.indice&&data.indice.indexOf("agregado")>=0)_msg+=" · 📇 agregado al ÍNDICE";
       _msg+=" · Actividades: "+(data.actividades||"—");
       if(data.actividades&&data.actividades.indexOf("solo estado de cuenta")>=0)_msg="✅ Hoja \""+data.hoja+"\": "+data.filas+" concepto(s) · ⏸ NO pasó a Actividades (modo: solo estado de cuenta)";
-      _xlToast(_msg);
+      _xlToast(_msg+_avisoAmbientalMariana(data));
     }else{
       _xlToast("❌ "+(data.error||"Error desconocido"),"#c0392b");
     }
