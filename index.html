@@ -2614,6 +2614,7 @@ function getAllItems(){
   Object.keys(TAB).forEach(aKey=>{
     const area=TAB[aKey];
     area.items.forEach(it=>{
+      if(it._deleted||getOverrideServicio(it.id)?._deleted)return;
       all.push({...it,aKey,al:area.l,ab:area.b});
     });
   });
