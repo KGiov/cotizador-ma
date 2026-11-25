@@ -590,8 +590,7 @@ tbody tr.drag-over{background:var(--gold-bg)!important;border:2px dashed var(--g
 </style>
 <style>
 /* Únicamente términos PC; tabla y totales originales de v61 intactos. */
-.ma-pc-terms{font-family:"Inter",Arial,sans-serif;font-size:10px;line-height:1.7;color:#4a5066;margin-top:12px;padding:12px 16px;background:#f8f9fb;border:1px solid #e2e5ec;border-radius:5px;}
-.ma-pc-terms[hidden]{display:none;}
+.ma-pc-terms{display:none;font-family:"Inter",Arial,sans-serif;font-size:10px;line-height:1.7;color:#4a5066;margin-top:12px;padding:12px 16px;background:#f8f9fb;border:1px solid #e2e5ec;border-radius:5px;}
 .ma-pc-terms h2{font-family:inherit;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8890a4;margin:0 0 10px;break-after:avoid;page-break-after:avoid;}
 .ma-pc-terms b{font-weight:600;color:#1a1f2e;}
 .ma-pc-terms p{margin:8px 0;orphans:3;widows:3;break-inside:avoid;}
@@ -1155,7 +1154,7 @@ function _fixTextoUTF8(v){
     try{
       const bytes=Uint8Array.from([...s].map(ch=>ch.charCodeAt(0)&255));
       const dec=new TextDecoder('utf-8',{fatal:false}).decode(bytes);
-      if(dec && !dec.includes(' ')) s=dec;
+      if(dec && !dec.includes('�')) s=dec;
     }catch(e){}
   }
   // Reparaciones de corrupciones históricas observadas en _KV / textos impresos.
@@ -2114,43 +2113,109 @@ function _adoptarRegistryServidor(reg){
   _registrarMaxVisto(JSON.stringify(remoto));
   if(typeof renderFolioList==="function") renderFolioList();
 }
+// Evita dos POST simultáneos del mismo folio (autoguardado + sincronización).
+const _regGuardadosEnCurso=new Map();
 async function _syncRegistryEntry(folio, urgente){
-  if(!SYNC_URL||!folio)return;
-  const f=(folioRegistry||[]).find(x=>x&&x.folio===folio); if(!f)return;
-  const expected={};
-  if(Object.prototype.hasOwnProperty.call(_registryServerM,folio)) expected[folio]=_registryServerM[folio];
-  const body=JSON.stringify({action:"saveRegistry",entries:[f],expected:expected});
-  try{
-    _setPill("sync","⟳ Guardando "+folio+"…");
-    const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:body});
-    const j=await r.json();
-    if(!j||!j.ok) throw new Error((j&&j.error)||"respuesta inválida");
-    if(Array.isArray(j.conflictos)&&j.conflictos.includes(folio)){
-      _regPendientes.delete(folio); _guardarRegPend();
-      const actual=Array.isArray(j.actuales)?j.actuales.find(x=>x&&x.folio===folio):null;
-      if(actual){
-        folioRegistry=(folioRegistry||[]).filter(x=>!x||x.folio!==folio);
-        folioRegistry.unshift(actual);
-        _registryServerM[folio]=Number(actual._m)||0;
-        _lsSet("ma_folio_registry",JSON.stringify(folioRegistry));
-        renderFolioList();
-      }
-      _xlToast("⚠️ "+folio+" fue modificada desde otro dispositivo. Se conservó la versión más reciente de la nube.","#c05c10");
-      _actualizarPill();
-      return;
-    }
-    const vm=j.versiones&&Number(j.versiones[folio]);
-    if(vm){
-      _registryServerM[folio]=vm;
-      if(vm>=Number(f._m)){ _regPendientes.delete(folio); _guardarRegPend(); }
-    }
-    _ultimoOk=true;
-  }catch(e){
-    _ultimoOk=false;
-    _ultimoErrorPush=(e&&(e.message||String(e)))||"desconocido";
-    _regPendientes.add(folio); _guardarRegPend();
+  if(!SYNC_URL||!folio){
+    if(urgente)throw new Error("Sin conexión al servidor de cotizaciones");
+    return false;
   }
-  _actualizarPill();
+  if(_regGuardadosEnCurso.has(folio)){
+    const resultado=await _regGuardadosEnCurso.get(folio);
+    // Si otro POST confirmó una versión anterior, transmitir la más reciente.
+    const ahora=(folioRegistry||[]).find(x=>x&&x.folio===folio);
+    if(ahora&&Number(ahora._m)>Number(_registryServerM[folio]||0)){
+      return _syncRegistryEntry(folio,urgente);
+    }
+    if(urgente&&!resultado)throw new Error("El folio no quedó confirmado en el servidor");
+    return resultado;
+  }
+  const tarea=(async()=>{
+    const f=(folioRegistry||[]).find(x=>x&&x.folio===folio);
+    if(!f)return false;
+    const sello=Number(f._m)||0;
+    if(Number(_registryServerM[folio]||0)>=sello){
+      _regPendientes.delete(folio);_guardarRegPend();return true;
+    }
+    const expected={};
+    if(Object.prototype.hasOwnProperty.call(_registryServerM,folio))
+      expected[folio]=_registryServerM[folio];
+    const body=JSON.stringify({action:"saveRegistry",entries:[f],expected});
+    const pausas=[700,1400,2600,4000];
+    let errorFinal="";
+    for(let intento=0;intento<=pausas.length;intento++){
+      try{
+        _setPill("sync","⟳ Guardando "+folio+" ("+(intento+1)+"/"+(pausas.length+1)+")…");
+        const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body});
+        if(!r.ok)throw new Error("HTTP "+r.status);
+        const j=await r.json();
+        if(j&&j.busy===true){
+          errorFinal=j.error||"Servidor ocupado";
+        }else if(!j||!j.ok){
+          throw new Error((j&&j.error)||"Respuesta inválida del servidor");
+        }else if(Array.isArray(j.conflictos)&&j.conflictos.includes(folio)){
+          // Otro dispositivo cambió este folio: NO sustituirlo silenciosamente.
+          const actual=Array.isArray(j.actuales)?j.actuales.find(x=>x&&x.folio===folio):null;
+          if(actual){
+            _registryServerM[folio]=Number(actual._m)||0;
+            folioRegistry=(folioRegistry||[]).filter(x=>!x||x.folio!==folio);
+            folioRegistry.unshift(actual);
+            _lsSet("ma_folio_registry",JSON.stringify(folioRegistry));
+            if(typeof renderFolioList==="function")renderFolioList();
+          }
+          _regPendientes.delete(folio);_guardarRegPend();
+          throw new Error("Conflicto de edición del folio "+folio+". Revisa la versión del servidor antes de guardar otra vez.");
+        }else{
+          const version=Number(j.versiones&&j.versiones[folio])||0;
+          if(version<sello){
+            throw new Error("El servidor no confirmó la versión actual del folio");
+          }
+          _registryServerM[folio]=version;
+          const latest=(folioRegistry||[]).find(x=>x&&x.folio===folio);
+          if(!latest||Number(latest._m)<=version)_regPendientes.delete(folio);
+          else _regPendientes.add(folio);
+          _guardarRegPend();_ultimoOk=true;_actualizarPill();
+          return true;
+        }
+      }catch(e){
+        errorFinal=(e&&e.message)||String(e);
+        if(/Conflicto de edición/.test(errorFinal))break;
+        // Respuesta perdida: comprobar primero si el POST sí llegó a Sheets.
+        try{
+          const vr=await fetch(SYNC_URL+"?action=registry&t="+Date.now());
+          if(vr.ok){
+            const vj=await vr.json();
+            const remoto=vj&&Array.isArray(vj.registry)?vj.registry.find(x=>x&&x.folio===folio):null;
+            if(remoto&&Number(remoto._m)>=sello){
+              _registryServerM[folio]=Number(remoto._m);
+              const latest=(folioRegistry||[]).find(x=>x&&x.folio===folio);
+              if(!latest||Number(latest._m)<=Number(remoto._m))_regPendientes.delete(folio);
+              _guardarRegPend();_ultimoOk=true;_actualizarPill();return true;
+            }
+          }
+        }catch(verificacionError){}
+      }
+      if(intento<pausas.length)
+        await new Promise(resolve=>setTimeout(resolve,pausas[intento]));
+    }
+    _ultimoOk=false;_ultimoErrorPush=errorFinal;
+    _regPendientes.add(folio);_guardarRegPend();_actualizarPill();
+    if(urgente)throw new Error("No se confirmó el guardado de "+folio+": "+errorFinal);
+    return false;
+  })();
+  // Publicar la promesa ya con el borrado garantizado ANTES de su resolución.
+  const gestion=tarea.finally(()=>_regGuardadosEnCurso.delete(folio));
+  _regGuardadosEnCurso.set(folio,gestion);
+  return gestion;
+}
+
+// Guardar implica confirmación remota, no solamente guardar en localStorage.
+async function _confirmarCotizacionGuardada(folio){
+  if(!folio)throw new Error("Folio inexistente");
+  const ok=await _syncRegistryEntry(folio,true);
+  if(!ok||_regPendientes.has(folio))
+    throw new Error("La cotización está pendiente de sincronización, no confirmada");
+  return true;
 }
 async function _syncRegistryPull(){
   if(!SYNC_URL||_regPullBusy)return;
@@ -2449,6 +2514,19 @@ let curA=null,curT=null,items=[],editMode=true;
 let currentFolio=null;
 let _folioAsignacionPromise=null;
 function _folioTexto(){ return currentFolio || "SIN FOLIO — se asigna al guardar"; }
+// La solicitud conserva su ID cuando Apps Script tarda en responder.
+// El backend usa requestId para recuperar el folio sin duplicar reservas.
+function _idSolicitudFolio(){
+  const clave="ma_folio_solicitud_pendiente";
+  let id=sessionStorage.getItem(clave);
+  if(!id){
+    id="req_"+((window.crypto&&crypto.randomUUID)?crypto.randomUUID().replace(/-/g,""):
+      Date.now().toString(36)+"_"+Math.random().toString(36).slice(2));
+    sessionStorage.setItem(clave,id);
+  }
+  return id;
+}
+
 async function _asegurarFolioGuardado(){
   if(currentFolio) return currentFolio;
   if(_folioAsignacionPromise) return _folioAsignacionPromise;
@@ -2472,7 +2550,7 @@ async function _asegurarFolioGuardado(){
         const r=await fetch(url,{
           method:"POST",
           headers:{"Content-Type":"text/plain;charset=utf-8"},
-          body:JSON.stringify({action:"nextFolio",year:year}),
+          body:JSON.stringify({action:"nextFolio",year:year,requestId:_idSolicitudFolio()}),
           signal:ctrl.signal
         });
         clearTimeout(timer);
@@ -2484,6 +2562,7 @@ async function _asegurarFolioGuardado(){
         if(!j||!j.ok||!j.folio) throw new Error((j&&j.error)||"No se pudo asignar folio");
 
         if(!currentFolio) currentFolio=j.folio;
+        sessionStorage.removeItem("ma_folio_solicitud_pendiente");
         _lsSet(`ma_folio_${year}`,String(j.numero||0));
 
         const el=document.getElementById("folio");
@@ -2614,7 +2693,6 @@ function getAllItems(){
   Object.keys(TAB).forEach(aKey=>{
     const area=TAB[aKey];
     area.items.forEach(it=>{
-      if(it._deleted||getOverrideServicio(it.id)?._deleted)return;
       all.push({...it,aKey,al:area.l,ab:area.b});
     });
   });
@@ -3443,7 +3521,6 @@ function buildPreview(){
         }else{
           if(txt!==items[idx].s){items[idx].s=txt;}
         }
-        _maBuildPrint();
       });
     });
     pvtb.querySelectorAll(".editable-nota-pv[contenteditable='true']").forEach(el=>{
@@ -3705,6 +3782,12 @@ async function guardarPDFEnFolio(){
   _limpiarClausulasPC(folioRegistry[idx]);
   folioRegistry[idx]._m=_mNuevo();
   _guardarRegistroLocal();
+  try{
+    await _confirmarCotizacionGuardada(currentFolio);
+  }catch(e){
+    _xlToast("⚠️ No confirmado en la nube: "+(e.message||e),"#c0392b");
+    return; // conservar en pendientes para recuperar después
+  }
   _checarReautorizacion(idx);
   renderFolioList();
   const toast=document.createElement("div");
@@ -3750,6 +3833,7 @@ async function descargarPDF(){
     folioRegistry[idx]._m=_mNuevo();
     _limpiarClausulasPC(folioRegistry[idx]);
     _guardarRegistroLocal();
+    await _confirmarCotizacionGuardada(currentFolio);
     _checarReautorizacion(idx);
     renderFolioList();
 
@@ -4469,6 +4553,7 @@ function limpiar(){
   ["chk-bajo","chk-vecinal","chk-zonal","chk-apertura","chk-regular"].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   modoComplementaria=false;folioBaseComplementaria=null;
   currentFolio=null;
+  sessionStorage.removeItem("ma_folio_solicitud_pendiente");
   document.getElementById("folio").textContent=_folioTexto();
   curA=null;curT=null;
   document.querySelectorAll(".ap").forEach(b=>b.classList.remove("on"));
@@ -5890,9 +5975,9 @@ async function abrirModalRegistrarPago(idx,opts={}){
       // igual que el generador de recibos original.
       if(rec){
         _verRecibo(live.folio,rec.folio);
-        _xlToast(opts.promesa?"✅ Promesa guardada. Recibo "+rec.folio+" generado.":"✅ Pago registrado. Recibo "+rec.folio+" guardado."+_avisoAmbientalMariana(data));
+        _xlToast(opts.promesa?"✅ Promesa guardada. Recibo "+rec.folio+" generado.":"✅ Pago registrado. Recibo "+rec.folio+" guardado.");
       }else{
-        _xlToast(opts.promesa?"✅ Promesa guardada sin recibo.":"✅ Pago registrado sin recibo."+_avisoAmbientalMariana(data));
+        _xlToast(opts.promesa?"✅ Promesa guardada sin recibo.":"✅ Pago registrado sin recibo.");
       }
     }catch(e){q("#pgGuardar").disabled=false;q("#pgGuardar").textContent=opts.promesa?"GENERAR PROMESA / RECIBO":"CONFIRMAR PAGO";alert("No se pudo registrar: "+e.message);}
   };
@@ -5970,12 +6055,6 @@ async function _nubePing(silent){
   _renderSyncStatus();
 }
 
-function _avisoAmbientalMariana(data){
-  if(!data)return "";
-  if(data.ambientalMariana==="enviado")return " · Ambiental actualizado en Administración";
-  if(data.ambientalMariana==="pendiente")return " · Ambiental pendiente de sincronizar. No vuelvas a registrar el pago.";
-  return "";
-}
 async function _apiAutorizar(idx){
   const u=_syncURL();const f=folioRegistry[idx];
   if(!u||!f)return;
@@ -6000,7 +6079,7 @@ async function _apiAutorizar(idx){
       if(data.indice&&data.indice.indexOf("agregado")>=0)_msg+=" · 📇 agregado al ÍNDICE";
       _msg+=" · Actividades: "+(data.actividades||"—");
       if(data.actividades&&data.actividades.indexOf("solo estado de cuenta")>=0)_msg="✅ Hoja \""+data.hoja+"\": "+data.filas+" concepto(s) · ⏸ NO pasó a Actividades (modo: solo estado de cuenta)";
-      _xlToast(_msg+_avisoAmbientalMariana(data));
+      _xlToast(_msg);
     }else{
       _xlToast("❌ "+(data.error||"Error desconocido"),"#c0392b");
     }
@@ -6990,23 +7069,9 @@ function _renderDashboardCotizaciones(){
 <script>
 const MA_PC_TERMS="<h2>TÉRMINOS Y CONDICIONES.</h2>\n<p><b>a) INICIO Y CONCLUSIÓN:</b> Se requiere un anticipo del 50% para iniciar con el servicio. El 50% restante deberá liquidarse al momento de la conclusión para la entrega de la carpeta física que acredita el trabajo realizado.</p>\n<p><b>b) PLAN DE PAGOS:</b> A solicitud del cliente, se podrá diferir el precio a distintas parcialidades.</p>\n<p><b>c) PLAZOS COMPROMISO:</b> Para efecto de brindar un mejor servicio y cumplir con los plazos legales, nos sujetaremos a las siguientes condiciones:</p>\n<p class=\"ma-sub\">I. El Cliente se compromete a proporcionar todos los requisitos documentales en un plazo máximo de 4 semanas a partir de haber pagado el anticipo, de lo contrario correrá una penalización de $5,000 adicionales al precio establecido.</p>\n<p class=\"ma-sub\">II. El Despacho se compromete a concluir con el servicio en un plazo máximo de 8 semanas a partir de la recepción completa de los requisitos documentales, de lo contrario correrá una penalización de $5,000 en favor del cliente.</p>\n<p><b>d) CAPACITACIONES y SIMULACRO:</b> El curso tiene una duración de 8 hrs, se imparte en una sola sesión en las instalaciones del establecimiento. Cupo del personal a capacitar: hasta 14 personas.</p>\n<p class=\"ma-sub\">I. En caso de requerirlo, la duración del curso se podrá dividir en dos sesiones (4 hrs por día) con un incremento de $3,750 al precio total del servicio.</p>\n<p class=\"ma-sub\">II. En caso de desearlo, el curso para hasta 25 personas conlleva un aumento de $4,500 al precio total del servicio.</p>\n<p><b>e) DICTAMEN DE GAS:</b> Sujeto a cambios derivados de la visita del perito por tipo de gas, cantidad y capacidad de tanques, y/o antigüedad de los mismos.</p>\n<p class=\"ma-sub\">I. En caso de requerir Ultrasonido (para tanques con más de 10 años de antigüedad o con placa ilegible) se deberá contemplar un pago adicional por este servicio. Vigencia: 5 años.</p>\n<p><b>f) CROQUIS CON SEÑALÉTICA:</b> En caso de no contar con planos de inmueble en Autocad (DWG) tendrá un costo adicional.</p>";
 
-const MA_PC_TERMS_SIN_CE=MA_PC_TERMS
- .split(/(?=<p><b>[a-f]\))/)
- .filter(bloque=>!/^<p><b>[ce]\)/.test(bloque))
- .map(bloque=>bloque.replace(/^<p><b>[df]\)/, inicio=>inicio==="<p><b>d)"?"<p><b>c)":"<p><b>d)"))
- .join("");
-
-// El catálogo de aperturas también incluye estos trámites de Protección Civil.
-const _maNormPC=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
-function _maEsPCSinCE(it){
- const nombre=_maNormPC(it.n).replace(/[-–—]/g," ");
- return /\bmedidas\s+basicas\b|\bno\s+obligatoriedad\b|\boficio\s+(?:de\s+)?no\s+obligacion\b|\b(?:oficio|constancia)\s+de\s+exencion\s+(?:del?\s+)?(?:pipc|programa interno de proteccion civil)\b/.test(nombre);
-}
-
 // Clasificación estructurada primero; catálogo para conceptos históricos sin área.
 function _maEsPC(it){
- const norm=_maNormPC;
- if(_maEsPCSinCE(it))return true;
+ const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
  const keys=[it.aKey,it.area,it.categoria,it.category,it.al].map(norm).filter(Boolean);
  const pc=v=>["protcivil","pc","proteccion civil","prot. civil"].includes(v);
  if(keys.some(pc))return true;
@@ -7020,18 +7085,8 @@ function _maBuildPrint(){
  const paper=document.getElementById("pv-paper");
  if(!paper)return;
  let terms=document.getElementById("ma-pc-terms");
- if(!terms){
-   terms=document.createElement("section");
-   terms.id="ma-pc-terms";
-   terms.className="ma-pc-terms";
-   paper.querySelector(".pv-nota-iva").after(terms);
- }
+ if(!terms){terms=document.createElement("section");terms.id="ma-pc-terms";terms.className="ma-pc-terms";terms.innerHTML=MA_PC_TERMS;paper.querySelector(".pv-nota-iva").after(terms);}
  terms.hidden=!items.some(_maEsPC);
- const sinCE=String(items.some(_maEsPCSinCE));
- if(terms.dataset.sinCe!==sinCE){
-   terms.innerHTML=sinCE==="true"?MA_PC_TERMS_SIN_CE:MA_PC_TERMS;
-   terms.dataset.sinCe=sinCE;
- }
 }
 const _maOriginalBuildPreview=buildPreview;
 buildPreview=function(){const result=_maOriginalBuildPreview.apply(this,arguments);_maBuildPrint();return result;};
